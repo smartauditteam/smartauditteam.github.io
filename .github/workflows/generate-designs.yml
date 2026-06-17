@@ -1,0 +1,62 @@
+name: Generate Design Index
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate designs.json
+        run: |
+          python << 'EOF'
+          import os,json
+
+          root="designs"
+          data={}
+
+          for category in os.listdir(root):
+              path=os.path.join(root,category)
+
+              if not os.path.isdir(path):
+                  continue
+
+              files=[]
+
+              for r,_,fs in os.walk(path):
+                  for f in fs:
+                      if f.startswith("."):
+                          continue
+
+                      rel=os.path.join(r,f)
+
+                      files.append({
+                          "name":f,
+                          "path":rel.replace("\\","/")
+                      })
+
+              data[category]=files
+
+          with open("designs.json","w") as fp:
+              json.dump(data,fp,indent=2)
+          EOF
+
+      - name: Commit
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+
+          git add designs.json
+
+          git diff --cached --quiet || \
+          git commit -m "Update design index"
+
+          git push

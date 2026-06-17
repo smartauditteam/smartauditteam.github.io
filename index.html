@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>SmartAudit Design Repository</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+<style>
+:root{
+--brand:#33a69a;
+
+--bg:#ffffff;
+--surface:#f8fafc;
+--card:#ffffff;
+
+--text:#0f172a;
+--muted:#64748b;
+--border:#e2e8f0;
+}
+
+[data-theme="dark"]{
+--brand:#33a69a;
+
+--bg:#0b0f19;
+--surface:#111827;
+--card:#131929;
+
+--text:#f8fafc;
+--muted:#94a3b8;
+--border:#273449;
+}
+
+body{
+background:var(--bg);
+color:var(--text);
+transition:.25s ease;
+}
+
+.card{
+background:var(--card);
+border:1px solid var(--border);
+}
+
+.brand{
+color:var(--brand);
+}
+
+.folder:hover{
+background:rgba(51,166,154,.08);
+}
+
+.active-folder{
+background:rgba(51,166,154,.12);
+border-color:rgba(51,166,154,.3);
+}
+
+.file-item:hover{
+background:rgba(255,255,255,.04);
+}
+</style>
+</head>
+
+<body>
+
+<nav class="sticky top-0 z-50 backdrop-blur bg-[var(--bg)]/90 border-b border-[var(--border)]">
+
+<div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+
+<div class="flex items-center gap-3">
+
+<div
+class="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-white"
+style="background:#33a69a;">
+SA
+</div>
+
+<div>
+<div class="font-semibold">
+SmartAudit Design Repository
+</div>
+
+<div class="text-xs text-[var(--muted)]">
+Design Portal
+</div>
+</div>
+
+</div>
+
+<div class="flex items-center gap-3">
+
+<input
+id="search"
+type="text"
+placeholder="Search designs..."
+class="px-3 py-2 rounded-lg text-sm border border-[var(--border)] bg-transparent w-64">
+
+<button
+id="theme-toggle"
+class="w-10 h-10 rounded-lg border border-[var(--border)]">
+
+<i class="fa-solid fa-circle-half-stroke"></i>
+
+</button>
+
+</div>
+
+</div>
+
+</nav>
+
+<header class="border-b border-[var(--border)]">
+
+<div class="max-w-7xl mx-auto px-6 py-12">
+
+<div
+class="inline-flex px-3 py-1 rounded-full text-xs mb-4"
+style="background:rgba(51,166,154,.1);color:#33a69a;">
+
+Design System v1.0
+
+</div>
+
+<h1 class="text-4xl font-bold mb-4">
+SmartAudit Design Hub
+</h1>
+
+<p class="max-w-3xl text-[var(--muted)]">
+Centralized repository for design references,
+patterns, pages, assets and documentation.
+</p>
+
+<div class="grid md:grid-cols-4 gap-4 mt-10">
+
+<div class="card rounded-xl p-5">
+<div class="text-sm text-[var(--muted)]">Categories</div>
+<div id="totalCategories" class="text-3xl font-bold">0</div>
+</div>
+
+<div class="card rounded-xl p-5">
+<div class="text-sm text-[var(--muted)]">Files</div>
+<div id="totalFiles" class="text-3xl font-bold">0</div>
+</div>
+
+<div class="card rounded-xl p-5">
+<div class="text-sm text-[var(--muted)]">Repository</div>
+<div class="text-lg font-semibold">Auto Synced</div>
+</div>
+
+<div class="card rounded-xl p-5">
+<div class="text-sm text-[var(--muted)]">Theme</div>
+<div id="themeLabel" class="text-lg font-semibold">Dark</div>
+</div>
+
+</div>
+
+</div>
+
+</header>
+
+<main class="max-w-7xl mx-auto px-6 py-10">
+
+<div class="grid lg:grid-cols-12 gap-8">
+
+<aside class="lg:col-span-3">
+
+<div class="card rounded-xl p-4">
+
+<div class="font-semibold mb-4">
+Categories
+</div>
+
+<div id="folders" class="space-y-2">
+</div>
+
+</div>
+
+</aside>
+
+<section class="lg:col-span-9">
+
+<div class="card rounded-xl overflow-hidden">
+
+<div
+class="px-5 py-4 border-b border-[var(--border)] flex justify-between">
+
+<div id="path">
+Select a category
+</div>
+
+<div id="count">
+0 files
+</div>
+
+</div>
+
+<div
+id="files"
+class="divide-y divide-[var(--border)]">
+
+</div>
+
+</div>
+
+</section>
+
+</div>
+
+</main>
+
+<section class="border-t border-[var(--border)]">
+
+<div class="max-w-7xl mx-auto px-6 py-12">
+
+<h2 class="text-2xl font-bold mb-6">
+Developer Contribution Guide
+</h2>
+
+<div class="grid md:grid-cols-2 gap-6">
+
+<div class="card p-6 rounded-xl">
+
+<h3 class="font-semibold mb-3">
+Folder Structure
+</h3>
+
+<pre class="text-sm overflow-auto">
+designs/
+├── foundations/
+├── components/
+├── patterns/
+├── pages/
+├── assets/
+└── archive/
+</pre>
+
+</div>
+
+<div class="card p-6 rounded-xl">
+
+<h3 class="font-semibold mb-3">
+Required Files
+</h3>
+
+<pre class="text-sm overflow-auto">
+your-design/
+
+├── README.md
+├── preview.png
+├── spec.pdf
+├── figma-link.txt
+└── assets/
+</pre>
+
+</div>
+
+</div>
+
+</div>
+
+</section>
+
+<footer class="border-t border-[var(--border)] py-8 text-center text-sm text-[var(--muted)]">
+© 2026 SmartAudit Team
+</footer>
+
+<script src="app.js"></script>
+
+</body>
+</html>
