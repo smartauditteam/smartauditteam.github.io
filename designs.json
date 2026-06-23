@@ -95,10 +95,6 @@
     {
       "name": "README.md",
       "path": "designs/pages/reports/README.md"
-    },
-    {
-      "name": "General Ledger — AI Test Results",
-      "path": "pages/data/general-ledger/index.html"
     }
   ],
   "patterns": [
