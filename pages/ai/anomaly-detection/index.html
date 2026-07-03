@@ -1,0 +1,1476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anomaly Detection · Test Results</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #F7F7F6;
+  --surface: #FFFFFF;
+  --surface2: #F1F0EE;
+  --border: rgba(0,0,0,0.08);
+  --border-mid: rgba(0,0,0,0.14);
+  --text: #1A1A19;
+  --text-mid: #555552;
+  --text-muted: #888780;
+  --blue: #185FA5;
+  --blue-bg: #E6F1FB;
+  --blue-text: #0C447C;
+  --red: #A32D2D;
+  --red-bg: #FCEBEB;
+  --amber: #854F0B;
+  --amber-bg: #FAEEDA;
+  --green: #3B6D11;
+  --green-bg: #EAF3DE;
+  --sidebar-w: 240px;
+  --radius: 8px;
+  --radius-lg: 12px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 0.5px solid var(--border-mid);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 16px 16px 12px;
+  border-bottom: 0.5px solid var(--border-mid);
+}
+
+.sidebar-logo {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.sidebar-logo span { color: var(--blue); }
+
+.sidebar-tagline {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.sidebar-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  padding: 14px 16px 6px;
+}
+
+.sidebar-runs {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 12px;
+}
+
+.run-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 9px 16px;
+  cursor: pointer;
+  border-radius: 0;
+  transition: background 0.1s;
+  border-left: 2px solid transparent;
+}
+.run-item:hover { background: var(--surface2); }
+.run-item.active {
+  background: var(--blue-bg);
+  border-left-color: var(--blue);
+}
+
+.run-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+}
+.run-item.active .run-title { color: var(--blue-text); }
+
+.run-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.run-pills {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.run-pill {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+.rp-detect { background: var(--red-bg); color: var(--red); }
+.rp-total { background: var(--surface2); color: var(--text-muted); }
+
+.sidebar-footer {
+  padding: 12px 16px;
+  border-top: 0.5px solid var(--border-mid);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── Main content ── */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.topbar {
+  background: var(--surface);
+  border-bottom: 0.5px solid var(--border-mid);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.topbar-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.topbar-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.topbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.badge-tag {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+.badge-ai { background: var(--blue-bg); color: var(--blue-text); }
+.badge-threshold { background: var(--surface2); color: var(--text-muted); }
+
+/* ── Stat bar ── */
+.stat-bar {
+  display: flex;
+  gap: 0;
+  padding: 12px 24px;
+  background: var(--surface);
+  border-bottom: 0.5px solid var(--border-mid);
+  flex-shrink: 0;
+}
+
+.stat-item {
+  flex: 1;
+  padding: 0 16px 0 0;
+  border-right: 0.5px solid var(--border-mid);
+  margin-right: 16px;
+}
+.stat-item:last-child { border-right: none; margin-right: 0; }
+
+.stat-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin-bottom: 3px;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.stat-value.red { color: var(--red); }
+.stat-value.amber { color: var(--amber); }
+.stat-value.green { color: var(--green); }
+.stat-value.blue { color: var(--blue); }
+
+.stat-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ── Table area ── */
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px 40px;
+}
+
+.section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section-title::after { content: ''; flex: 1; height: 0.5px; background: var(--border-mid); }
+
+.tbl-wrap {
+  background: var(--surface);
+  border: 0.5px solid var(--border-mid);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.tbl-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.tbl-bar-label { font-size: 12px; color: var(--text-muted); }
+.tbl-row-count { margin-left: auto; font-size: 11px; color: var(--text-muted); }
+
+.tbl-scroll { overflow-x: auto; }
+
+table { width: 100%; border-collapse: collapse; }
+
+thead tr { background: var(--surface2); }
+
+th {
+  padding: 7px 10px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 0.5px solid var(--border-mid);
+  white-space: nowrap;
+}
+
+td {
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--text);
+  border-bottom: 0.5px solid var(--border);
+  white-space: nowrap;
+}
+
+tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: #FAFAF9; }
+
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.entry-link { color: var(--blue); font-weight: 500; }
+.desc-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+
+/* flagged row highlight */
+tr.flagged td { background: #FFF8F8; }
+tr.flagged:hover td { background: #FEEFEF; }
+
+/* risk pill */
+.rp {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  transition: opacity 0.1s;
+  white-space: nowrap;
+}
+.rp:hover { opacity: 0.8; }
+.rp-hi { background: var(--red-bg); color: var(--red); }
+.rp-md { background: var(--amber-bg); color: var(--amber); }
+.rp-lo { background: var(--green-bg); color: var(--green); }
+.rp-normal { background: var(--surface2); color: var(--text-muted); }
+
+/* ── Floating popover ── */
+#floating-popover {
+  display: none;
+  position: fixed;
+  background: var(--surface);
+  border: 0.5px solid var(--border-mid);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.14);
+  padding: 14px;
+  width: 260px;
+  z-index: 9999;
+  font-size: 12px;
+}
+#floating-popover.show { display: block; }
+
+.pop-header {
+  margin-bottom: 10px;
+}
+.pop-entry {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.pop-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  white-space: normal;
+  line-height: 1.4;
+}
+
+.pop-score-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 0.5px solid var(--border-mid);
+}
+.pop-score-num {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+}
+.pop-score-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.pop-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.pop-factor {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 5px 0;
+  border-bottom: 0.5px solid var(--border);
+}
+.pop-factor:last-child { border-bottom: none; }
+.pop-factor-name { font-size: 11px; color: var(--text-mid); }
+.pop-factor-score {
+  font-size: 11px;
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.pop-factor-bar-wrap {
+  width: 48px;
+  height: 4px;
+  background: var(--surface2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.pop-factor-bar {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--text-muted);
+  transition: width 0.2s;
+}
+.bar-hi { background: var(--red); }
+.bar-md { background: var(--amber); }
+.bar-lo { background: var(--green); }
+.bar-none { background: var(--border-mid); }
+
+.pop-signals {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 0.5px solid var(--border-mid);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.signal-chip {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--red-bg);
+  color: var(--red);
+}
+
+/* ── Injected entry reason pill ── */
+.injected-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #EDE9FD;
+  color: #5B3DB3;
+  margin-left: 4px;
+}
+
+/* ── Miss badge ── */
+.miss-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--amber-bg);
+  color: var(--amber);
+}
+
+</style>
+</head>
+<body>
+
+<!-- ══ Sidebar ══ -->
+<nav class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">Smart<span>Audit</span></div>
+    <div class="sidebar-tagline">Anomaly Detection · Test Viewer</div>
+  </div>
+
+  <div class="sidebar-section-label">Test runs</div>
+
+  <div class="sidebar-runs" id="sidebar-runs"></div>
+
+  <div class="sidebar-footer">
+    JSON-driven · update test-data.js to add runs
+  </div>
+</nav>
+
+<!-- ══ Main ══ -->
+<div class="main">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title" id="run-title">—</div>
+      <div class="topbar-sub" id="run-subtitle">—</div>
+    </div>
+    <div class="topbar-right">
+      <span class="badge-tag badge-ai">✦ AI anomaly detection</span>
+      <span class="badge-tag badge-threshold" id="threshold-badge">—</span>
+    </div>
+  </div>
+
+  <div class="stat-bar" id="stat-bar"></div>
+
+  <div class="content" id="content"></div>
+</div>
+
+<!-- ══ Floating popover ══ -->
+<div id="floating-popover"></div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────
+// TEST DATA — update this object to add new test runs
+// Each run: { id, title, date, sourceId, threshold, description,
+//             injected: [...], normal: [...] }
+// Each entry: { entryNo, glNumber, name, transactionType, description,
+//               postingDate, currency, debit, credit, amount,
+//               postingBy, anomalyDetection: { detected, score, factors },
+//               injectedSignals?: string[], missReason?: string }
+// ─────────────────────────────────────────────────────────────────
+// Top 20 real entries by anomaly score (descending) — shared across all runs
+const TOP20_NORMAL = [
+  { entryNo: "JV/COMM/9934", glNumber: "11001", name: "HDFC Bank - Current A/c", transactionType: "Journal Entry", description: "Bank Payout", postingDate: "2025-12-14", currency: "INR", debit: 0, credit: 243742, amount: -243742, postingBy: "Audit_Bot", anomalyDetection: { detected: false, score: 0.4613, factors: [{ type: "numericOutlier", weight: 0.4, score: 0.9238, confidence: 1 }, { type: "behavioralAnomaly", weight: 0.35, score: 0.2, confidence: 1 }, { type: "semanticAnomaly", weight: 0.25, score: 0.0872, confidence: 1 }] } },
+  { entryNo: "JV/COMM/9374", glNumber: "11001", name: "HDFC Bank - Current A/c", transactionType: "Journal Entry", description: "Bank Payout", postingDate: "2025-07-20", currency: "INR", debit: 0, credit: 241868, amount: -241868, postingBy: "Audit_Bot", anomalyDetection: { detected: false, score: 0.4568, factors: [{ type: "numericOutlier", weight: 0.4, score: 0.9124, confidence: 1 }, { type: "behavioralAnomaly", weight: 0.35, score: 0.2, confidence: 1 }, { type: "semanticAnomaly", weight: 0.25, score: 0.0872, confidence: 1 }] } },
+  { entryNo: "JV/COMM/9422", glNumber: "11001", name: "HDFC Bank - Current A/c", transactionType: "Journal Entry", description: "Bank Payout", postingDate: "2025-12-07", currency: "INR", debit: 0, credit: 241233, amount: -241233, postingBy: "Audit_Bot", anomalyDetection: { detected: false, score: 0.4551, factors: [{ type: "numericOutlier", weight: 0.4, score: 0.9086, confidence: 1 }, { type: "behavioralAnomaly", weight: 0.35, score: 0.2, confidence: 1 }, { type: "semanticAnomaly", weight: 0.25, score: 0.0866, confidence: 1 }] } },
+  { entryNo: "JV/COMM/9606", glNumber: "11001", name: "HDFC Bank - Current A/c", transactionType: "Journal Entry", description: "Bank Payout", postingDate: "2025-08-23", currency: "INR", debit: 0, credit: 236928, amount: -236928, postingBy: "Audit_Bot", anomalyDetection: { detected: false, score: 0.4448, factors: [{ type: "numericOutlier", weight: 0.4, score: 0.8824, confidence: 1 }, { type: "behavioralAnomaly", weight: 0.35, score: 0.2, confidence: 1 }, { type: "semanticAnomaly", weight: 0.25, score: 0.0872, confidence: 1 }] } },
+  { entryNo: "JV/COMM/9147", glNumber: "11001", name: "HDFC Bank - Current A/c", transactionType: "Journal Entry", description: "Bank Payout", postingDate: "2026-02-24", currency: "INR", debit: 0, credit: 249493, amount: -249493, postingBy: "Audit_Bot", anomalyDetection: { detected: false, score: 0.4401, factors: [{ type: "numericOutlier", weight: 0.4, score: 0.9587, confidence: 1 }, { type: "behavioralAnomaly", weight: 0.35, score: 0.1, confidence: 1 }, { type: "semanticAnomaly", weight: 0.25, score: 0.0866, confidence: 1 }] } },
+  { entryNo: "JV/COMM/9482", glNumber: "11001", name: "HDFC Bank - Current A/c", transactionType: "Journal Entry", description: "Bank Payout", postingDate: "2025-05-26", currency: "INR", debit: 0, credit: 249096, amount: -249096, postingBy: "Audit_Bot", anomalyDetection: { detected: false, score: 0.4393, factors: [{ type: "numericOutlier", weight: 0.4, score: 0.9563, confidence: 1 }, { type: "behavioralAnomaly", weight: 0.35, score: 0.1, confidence: 1 }, { type: "semanticAnomaly", weight: 0.25, score: 0.0872, confidence: 1 }] } },
+  { entryNo: "JV/COMM/9942", glNumber: "11001", name: "HDFC Bank - Current A/c", transactionType: "Journal Entry", description: "Bank Payout", postingDate: "2025-07-10", currency: "INR", debit: 0, credit: 248366, amount: -248366, postingBy: "Audit_Bot", anomalyDetection: { detected: false, score: 0.4376, factors: [{ type: "numericOutlier", weight: 0.4, score: 0.9519, confidence: 1 }, { type: "behavioralAnomaly", weight: 0.35, score: 0.1, confidence: 1 }, { type: "semanticAnomaly", weight: 0.25, score: 0.0872, confidence: 1 }] } },
+  { entryNo: "JV/COMM/9608", glNumber: "11001", name: "HDFC Bank - Current A/c", transactionType: "Journal Entry", description: "Bank Payout", postingDate: "2026-01-16", currency: "INR", debit: 0, credit: 247864, amount: -247864, postingBy: "Audit_Bot", anomalyDetection: { detected: false, score: 0.4363, factors: [{ type: "numericOutlier", weight: 0.4, score: 0.9488, confidence: 1 }, { type: "behavioralAnomaly", weight: 0.35, score: 0.1, confidence: 1 }, { type: "semanticAnomaly", weight: 0.25, score: 0.0872, confidence: 1 }] } },
+  { entryNo: "JV/COMM/9152", glNumber: "11001", name: "HDFC Bank - Current A/c", transactionType: "Journal Entry", description: "Bank Payout", postingDate: "2025-12-16", currency: "INR", debit: 0, credit: 247460, amount: -247460, postingBy: "Audit_Bot", anomalyDetection: { detected: false, score: 0.4352, factors: [{ type: "numericOutlier", weight: 0.4, score: 0.9464, confidence: 1 }, { type: "behavioralAnomaly", weight: 0.35, score: 0.1, confidence: 1 }, { type: "semanticAnomaly", weight: 0.25, score: 0.0866, confidence: 1 }] } },
+  { entryNo: "JV/SUSP/S014", glNumber: "14002", name: "Deferred Commission Costs", transactionType: "Journal Entry", description: "Capitalized Sales Commission", postingDate: "2025-12-18", currency: "INR", debit: 629000, credit: 0, amount: 629000, postingBy: "Audit_Bot", anomalyDetection: { detected: false, score: 0.435, factors: [{ type: "numericOutlier", weight: 0.4, score: 1.0, confidence: 1 }, { type: "behavioralAnomaly", weight: 0.35, score: 0.1, confidence: 1 }, { type: "semanticAnomaly", weight: 0.25, score: 0, confidence: 1 }] } },
+  { entryNo: "INV/ENT/9536", glNumber: "32001", name: "Deferred Revenue (Current Liability)", transactionType: "Sales Invoice", description: "Unearned Revenue - Contract Start", postingDate: "2025-09-27", currency: "INR", debit: 0, credit: 5984085, amount: -5984085, postingBy: "Audit_Bot", anomalyDetection: { detected: false, score: 0.4334, factors: [{ type: "numericOutlier", weight: 0.4, score: 0.8386, confidence: 1 }, { type: "behavioralAnomaly", weight: 0.35, score: 0.2, confidence: 1 }, { type: "semanticAnomaly", weight: 0.25, score: 0.1119, confidence: 1 }] } },
+  { entryNo: "JV/COMM/9588", glNumber: "11001", name: "HDFC Bank - Current A/c", transactionType: "Journal Entry", description: "Bank Payout", postingDate: "2025-06-09", currency: "INR", debit: 0, credit: 245727, amount: -245727, postingBy: "Audit_Bot", anomalyDetection: { detected: false, score: 0.4312, factors: [{ type: "numericOutlier", weight: 0.4, score: 0.9359, confidence: 1 }, { type: "behavioralAnomaly", weight: 0.35, score: 0.1, confidence: 1 }, { type: "semanticAnomaly", weight: 0.25, score: 0.0872, confidence: 1 }] } },
+  { entryNo: "JV/COMM/9048", glNumber: "11001", name: "HDFC Bank - Current A/c", transactionType: "Journal Entry", description: "Bank Payout", postingDate: "2025-09-11", currency: "INR", debit: 0, credit: 245276, amount: -245276, postingBy: "Audit_Bot", anomalyDetection: { detected: false, score: 0.43, factors: [{ type: "numericOutlier", weight: 0.4, score: 0.9331, confidence: 1 }, { type: "behavioralAnomaly", weight: 0.35, score: 0.1, confidence: 1 }, { type: "semanticAnomaly", weight: 0.25, score: 0.0872, confidence: 1 }] } },
+  { entryNo: "JV/COMM/9399", glNumber: "11001", name: "HDFC Bank - Current A/c", transactionType: "Journal Entry", description: "Bank Payout", postingDate: "2025-08-08", currency: "INR", debit: 0, credit: 244189, amount: -244189, postingBy: "Audit_Bot", anomalyDetection: { detected: false, score: 0.4274, factors: [{ type: "numericOutlier", weight: 0.4, score: 0.9265, confidence: 1 }, { type: "behavioralAnomaly", weight: 0.35, score: 0.1, confidence: 1 }, { type: "semanticAnomaly", weight: 0.25, score: 0.0872, confidence: 1 }] } },
+  { entryNo: "JV/COMM/9670", glNumber: "11001", name: "HDFC Bank - Current A/c", transactionType: "Journal Entry", description: "Bank Payout", postingDate: "2025-04-21", currency: "INR", debit: 0, credit: 243673, amount: -243673, postingBy: "Audit_Bot", anomalyDetection: { detected: false, score: 0.426, factors: [{ type: "numericOutlier", weight: 0.4, score: 0.9234, confidence: 1 }, { type: "behavioralAnomaly", weight: 0.35, score: 0.1, confidence: 1 }, { type: "semanticAnomaly", weight: 0.25, score: 0.0866, confidence: 1 }] } },
+  { entryNo: "JV/COMM/9954", glNumber: "11001", name: "HDFC Bank - Current A/c", transactionType: "Journal Entry", description: "Bank Payout", postingDate: "2025-05-21", currency: "INR", debit: 0, credit: 243290, amount: -243290, postingBy: "Audit_Bot", anomalyDetection: { detected: false, score: 0.4251, factors: [{ type: "numericOutlier", weight: 0.4, score: 0.9211, confidence: 1 }, { type: "behavioralAnomaly", weight: 0.35, score: 0.1, confidence: 1 }, { type: "semanticAnomaly", weight: 0.25, score: 0.0866, confidence: 1 }] } },
+  { entryNo: "JV/COMM/9937", glNumber: "11001", name: "HDFC Bank - Current A/c", transactionType: "Journal Entry", description: "Bank Payout", postingDate: "2025-11-05", currency: "INR", debit: 0, credit: 243043, amount: -243043, postingBy: "Audit_Bot", anomalyDetection: { detected: false, score: 0.4246, factors: [{ type: "numericOutlier", weight: 0.4, score: 0.9196, confidence: 1 }, { type: "behavioralAnomaly", weight: 0.35, score: 0.1, confidence: 1 }, { type: "semanticAnomaly", weight: 0.25, score: 0.0872, confidence: 1 }] } },
+  { entryNo: "JV/COMM/9719", glNumber: "11001", name: "HDFC Bank - Current A/c", transactionType: "Journal Entry", description: "Bank Payout", postingDate: "2025-09-12", currency: "INR", debit: 0, credit: 240192, amount: -240192, postingBy: "Audit_Bot", anomalyDetection: { detected: false, score: 0.4175, factors: [{ type: "numericOutlier", weight: 0.4, score: 0.9022, confidence: 1 }, { type: "behavioralAnomaly", weight: 0.35, score: 0.1, confidence: 1 }, { type: "semanticAnomaly", weight: 0.25, score: 0.0866, confidence: 1 }] } },
+  { entryNo: "JV/COMM/9869", glNumber: "11001", name: "HDFC Bank - Current A/c", transactionType: "Journal Entry", description: "Bank Payout", postingDate: "2025-10-12", currency: "INR", debit: 0, credit: 225459, amount: -225459, postingBy: "Audit_Bot", anomalyDetection: { detected: false, score: 0.4167, factors: [{ type: "numericOutlier", weight: 0.4, score: 0.8127, confidence: 1 }, { type: "behavioralAnomaly", weight: 0.35, score: 0.2, confidence: 1 }, { type: "semanticAnomaly", weight: 0.25, score: 0.0866, confidence: 1 }] } },
+  { entryNo: "JV/COMM/9402", glNumber: "11001", name: "HDFC Bank - Current A/c", transactionType: "Journal Entry", description: "Bank Payout", postingDate: "2025-10-26", currency: "INR", debit: 0, credit: 223707, amount: -223707, postingBy: "Audit_Bot", anomalyDetection: { detected: false, score: 0.4126, factors: [{ type: "numericOutlier", weight: 0.4, score: 0.8021, confidence: 1 }, { type: "behavioralAnomaly", weight: 0.35, score: 0.2, confidence: 1 }, { type: "semanticAnomaly", weight: 0.25, score: 0.0872, confidence: 1 }] } }
+];
+
+const TEST_RUNS = [
+  {
+    id: "run-001",
+    title: "Run 1 · 2k real data + 15 injected",
+    date: "2026-07-03",
+    sourceId: "69ba5a747822abafa3d7e93d-o9720g85dbmpzlsae6",
+    threshold: 0.60,
+    description: "2000 real GL entries across multiple accounts. 15 suspicious entries injected by claude_bot across GL 11001, 61001, 14002. Embeddings computed. 7 of 13 claude_bot entries detected (S013 & S014 used postingBy=Audit_Bot so excluded from count).",
+    injected: [
+      {
+        entryNo: "JV/SUSP/S001",
+        glNumber: "11001",
+        name: "HDFC Bank - Current A/c",
+        transactionType: "Journal Entry",
+        description: "Bank adjustment - misc correction",
+        postingDate: "2025-11-15",
+        currency: "INR",
+        debit: 0,
+        credit: 365000,
+        amount: -365000,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: adjustment/misc/correction", "high amount (4× mean)", "Saturday"],
+        anomalyDetection: {
+          detected: true,
+          score: 0.7233,
+          factors: [
+            { type: "numericOutlier", weight: 0.4, score: 1.0, confidence: 1 },
+            { type: "behavioralAnomaly", weight: 0.35, score: 0.7, confidence: 1 },
+            { type: "semanticAnomaly", weight: 0.25, score: 0.3133, confidence: 1 }
+          ]
+        }
+      },
+      {
+        entryNo: "JV/SUSP/S002",
+        glNumber: "11001",
+        name: "HDFC Bank - Current A/c",
+        transactionType: "Journal Entry",
+        description: "adj",
+        postingDate: "2025-11-16",
+        currency: "INR",
+        debit: 0,
+        credit: 87500,
+        amount: -87500,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: adj", "short description (3 chars)", "Sunday"],
+        missReason: "Amount within normal range (below 3σ). Behavioral score 1.0 but numericOutlier 0.03 pulls weighted total to 0.41 — below 0.60 threshold.",
+        anomalyDetection: {
+          detected: false,
+          score: 0.4065,
+          factors: [
+            { type: "numericOutlier", weight: 0.4, score: 0.0292, confidence: 1 },
+            { type: "behavioralAnomaly", weight: 0.35, score: 1.0, confidence: 1 },
+            { type: "semanticAnomaly", weight: 0.25, score: 0.1793, confidence: 1 }
+          ]
+        }
+      },
+      {
+        entryNo: "JV/SUSP/S003",
+        glNumber: "11001",
+        name: "HDFC Bank - Current A/c",
+        transactionType: "Journal Entry",
+        description: "Manual bank transfer correction",
+        postingDate: "2025-12-10",
+        currency: "INR",
+        debit: 0,
+        credit: 92000,
+        amount: -92000,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: manual/correction", "weekday", "normal amount"],
+        missReason: "Keywords present but amount is near mean (92k vs 91k mean). Behavioral 0.6, outlier ~0. Composite 0.27 — well below threshold.",
+        anomalyDetection: {
+          detected: false,
+          score: 0.2697,
+          factors: [
+            { type: "numericOutlier", weight: 0.4, score: 0.0031, confidence: 1 },
+            { type: "behavioralAnomaly", weight: 0.35, score: 0.6, confidence: 1 },
+            { type: "semanticAnomaly", weight: 0.25, score: 0.2337, confidence: 1 }
+          ]
+        }
+      },
+      {
+        entryNo: "JV/SUSP/S004",
+        glNumber: "11001",
+        name: "HDFC Bank - Current A/c",
+        transactionType: "Journal Entry",
+        description: "Bank Payout",
+        postingDate: "2025-12-22",
+        currency: "INR",
+        debit: 0,
+        credit: 457000,
+        amount: -457000,
+        postingBy: "claude_bot",
+        injectedSignals: ["high amount (5× mean)", "weekday", "clean description"],
+        missReason: "High amount detected (numericOutlier 1.0) but description 'Bank Payout' is normal text — behavioralAnomaly only 0.1. Composite 0.46 — misses threshold.",
+        anomalyDetection: {
+          detected: false,
+          score: 0.4567,
+          factors: [
+            { type: "numericOutlier", weight: 0.4, score: 1.0, confidence: 1 },
+            { type: "behavioralAnomaly", weight: 0.35, score: 0.1, confidence: 1 },
+            { type: "semanticAnomaly", weight: 0.25, score: 0.087, confidence: 1 }
+          ]
+        }
+      },
+      {
+        entryNo: "JV/SUSP/S005",
+        glNumber: "11001",
+        name: "HDFC Bank - Current A/c",
+        transactionType: "Journal Entry",
+        description: "fix",
+        postingDate: "2025-12-20",
+        currency: "INR",
+        debit: 0,
+        credit: 390000,
+        amount: -390000,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: fix", "short description (3 chars)", "Saturday", "high amount (4× mean)"],
+        anomalyDetection: {
+          detected: true,
+          score: 0.7921,
+          factors: [
+            { type: "numericOutlier", weight: 0.4, score: 1.0, confidence: 1 },
+            { type: "behavioralAnomaly", weight: 0.35, score: 1.0, confidence: 1 },
+            { type: "semanticAnomaly", weight: 0.25, score: 0.1683, confidence: 1 }
+          ]
+        }
+      },
+      {
+        entryNo: "VCH/SUSP/S006",
+        glNumber: "61001",
+        name: "COGS - Cloud Hosting (AWS/GCP)",
+        transactionType: "Expense",
+        description: "Cloud hosting temp adjustment",
+        postingDate: "2025-11-01",
+        currency: "INR",
+        debit: 205000,
+        credit: 0,
+        amount: 205000,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: temp/adjustment", "high amount (3× mean)", "Saturday"],
+        anomalyDetection: {
+          detected: true,
+          score: 0.7021,
+          factors: [
+            { type: "numericOutlier", weight: 0.4, score: 1.0, confidence: 1 },
+            { type: "behavioralAnomaly", weight: 0.35, score: 0.7, confidence: 1 },
+            { type: "semanticAnomaly", weight: 0.25, score: 0.2282, confidence: 1 }
+          ]
+        }
+      },
+      {
+        entryNo: "VCH/SUSP/S007",
+        glNumber: "61001",
+        name: "COGS - Cloud Hosting (AWS/GCP)",
+        transactionType: "Expense",
+        description: "X",
+        postingDate: "2025-11-17",
+        currency: "INR",
+        debit: 71000,
+        credit: 0,
+        amount: 71000,
+        postingBy: "claude_bot",
+        injectedSignals: ["ultra-short description (1 char)", "normal amount", "weekday"],
+        missReason: "Amount ~68k mean (outlier 0.006). Behavioral 0.4. Composite 0.18 — threshold not reached. Pure short-desc signal without amount anomaly cannot cross 0.60.",
+        anomalyDetection: {
+          detected: false,
+          score: 0.1848,
+          factors: [
+            { type: "numericOutlier", weight: 0.4, score: 0.0065, confidence: 1 },
+            { type: "behavioralAnomaly", weight: 0.35, score: 0.4, confidence: 1 },
+            { type: "semanticAnomaly", weight: 0.25, score: 0.1687, confidence: 1 }
+          ]
+        }
+      },
+      {
+        entryNo: "VCH/SUSP/S008",
+        glNumber: "61001",
+        name: "COGS - Cloud Hosting (AWS/GCP)",
+        transactionType: "Expense",
+        description: "Misc COGS correction - error fix",
+        postingDate: "2025-12-06",
+        currency: "INR",
+        debit: 273000,
+        credit: 0,
+        amount: 273000,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: misc/correction/error/fix", "high amount (4× mean)", "Saturday"],
+        anomalyDetection: {
+          detected: true,
+          score: 0.7292,
+          factors: [
+            { type: "numericOutlier", weight: 0.4, score: 1.0, confidence: 1 },
+            { type: "behavioralAnomaly", weight: 0.35, score: 0.7, confidence: 1 },
+            { type: "semanticAnomaly", weight: 0.25, score: 0.3368, confidence: 1 }
+          ]
+        }
+      },
+      {
+        entryNo: "VCH/SUSP/S009",
+        glNumber: "61001",
+        name: "COGS - Cloud Hosting (AWS/GCP)",
+        transactionType: "Expense",
+        description: "Monthly COGS - Cloud Hosting (AWS/GCP)",
+        postingDate: "2025-12-07",
+        currency: "INR",
+        debit: 65000,
+        credit: 0,
+        amount: 65000,
+        postingBy: "claude_bot",
+        injectedSignals: ["Sunday (weekend only signal)", "normal description", "normal amount"],
+        missReason: "Only weekend signal triggered. numericOutlier 0.05, behavioralAnomaly 0.2 (weekend weight 0.1 only). Composite 0.09 — weekend alone is insufficient.",
+        anomalyDetection: {
+          detected: false,
+          score: 0.0913,
+          factors: [
+            { type: "numericOutlier", weight: 0.4, score: 0.0533, confidence: 1 },
+            { type: "behavioralAnomaly", weight: 0.35, score: 0.2, confidence: 1 },
+            { type: "semanticAnomaly", weight: 0.25, score: 0.0001, confidence: 1 }
+          ]
+        }
+      },
+      {
+        entryNo: "VCH/SUSP/S010",
+        glNumber: "61001",
+        name: "COGS - Cloud Hosting (AWS/GCP)",
+        transactionType: "Expense",
+        description: "adj",
+        postingDate: "2025-12-13",
+        currency: "INR",
+        debit: 310000,
+        credit: 0,
+        amount: 310000,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: adj", "short description (3 chars)", "Saturday", "high amount (4.5× mean)"],
+        anomalyDetection: {
+          detected: true,
+          score: 0.7852,
+          factors: [
+            { type: "numericOutlier", weight: 0.4, score: 1.0, confidence: 1 },
+            { type: "behavioralAnomaly", weight: 0.35, score: 1.0, confidence: 1 },
+            { type: "semanticAnomaly", weight: 0.25, score: 0.1409, confidence: 1 }
+          ]
+        }
+      },
+      {
+        entryNo: "JV/SUSP/S011",
+        glNumber: "14002",
+        name: "Deferred Commission Costs",
+        transactionType: "Journal Entry",
+        description: "Commission adjustment - misc",
+        postingDate: "2025-11-08",
+        currency: "INR",
+        debit: 472000,
+        credit: 0,
+        amount: 472000,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: adjustment/misc", "high amount (3× mean)", "Saturday"],
+        anomalyDetection: {
+          detected: true,
+          score: 0.7198,
+          factors: [
+            { type: "numericOutlier", weight: 0.4, score: 1.0, confidence: 1 },
+            { type: "behavioralAnomaly", weight: 0.35, score: 0.7, confidence: 1 },
+            { type: "semanticAnomaly", weight: 0.25, score: 0.299, confidence: 1 }
+          ]
+        }
+      },
+      {
+        entryNo: "JV/SUSP/S012",
+        glNumber: "14002",
+        name: "Deferred Commission Costs",
+        transactionType: "Journal Entry",
+        description: "OK",
+        postingDate: "2025-11-25",
+        currency: "INR",
+        debit: 162000,
+        credit: 0,
+        amount: 162000,
+        postingBy: "claude_bot",
+        injectedSignals: ["short description (2 chars)", "normal amount", "weekday"],
+        missReason: "Amount near mean (162k vs 157k). Behavioral 0.4, outlier 0.006. Composite 0.22 — pure short-desc without other signals cannot reach threshold.",
+        anomalyDetection: {
+          detected: false,
+          score: 0.2155,
+          factors: [
+            { type: "numericOutlier", weight: 0.4, score: 0.0056, confidence: 1 },
+            { type: "behavioralAnomaly", weight: 0.35, score: 0.4, confidence: 1 },
+            { type: "semanticAnomaly", weight: 0.25, score: 0.2931, confidence: 1 }
+          ]
+        }
+      },
+      {
+        entryNo: "JV/SUSP/S015",
+        glNumber: "14002",
+        name: "Deferred Commission Costs",
+        transactionType: "Journal Entry",
+        description: "fix",
+        postingDate: "2025-12-27",
+        currency: "INR",
+        debit: 520000,
+        credit: 0,
+        amount: 520000,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: fix", "short description (3 chars)", "Saturday", "high amount (3.3× mean)"],
+        anomalyDetection: {
+          detected: true,
+          score: 0.8252,
+          factors: [
+            { type: "numericOutlier", weight: 0.4, score: 1.0, confidence: 1 },
+            { type: "behavioralAnomaly", weight: 0.35, score: 1.0, confidence: 1 },
+            { type: "semanticAnomaly", weight: 0.25, score: 0.3009, confidence: 1 }
+          ]
+        }
+      }
+    ],
+    normal: TOP20_NORMAL
+  },
+
+  // ─────────────────────────────────────────────────────────────────
+  // RUN 2 — Combined + pure single-signal (GLs: 11001, 61001, 14002, 61002, 41001, 32001)
+  // ─────────────────────────────────────────────────────────────────
+  {
+    id: "run-002",
+    title: "Run 2 · Combined vs pure single-signal",
+    date: "2026-07-03",
+    sourceId: "69ba5a747822abafa3d7e93d-o9720g85dbmpzlsae6",
+    threshold: 0.60,
+    description: "12 injected entries across GL 11001, 61001, 14002, 61002, 41001, 32001. 7 combined-signal entries (keyword + outlier ± weekend) vs 5 pure single-signal entries (behavioral only or outlier only). Shows where weighted average succeeds and where it falls short.",
+    injected: [
+      {
+        entryNo: "JV/R2/S001", glNumber: "11001", name: "HDFC Bank - Current A/c",
+        transactionType: "Journal Entry", description: "adj",
+        postingDate: "2025-10-04", currency: "INR", debit: 0, credit: 365000, amount: -365000,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: adj", "short description (3 chars)", "Saturday", "high amount (4× mean)"],
+        anomalyDetection: { detected: true, score: 0.7949, factors: [
+          { type: "numericOutlier", weight: 0.4, score: 1.0, confidence: 1 },
+          { type: "behavioralAnomaly", weight: 0.35, score: 1.0, confidence: 1 },
+          { type: "semanticAnomaly", weight: 0.25, score: 0.1794, confidence: 1 }
+        ]}
+      },
+      {
+        entryNo: "VCH/R2/S002", glNumber: "61001", name: "COGS - Cloud Hosting (AWS/GCP)",
+        transactionType: "Expense", description: "Misc COGS correction",
+        postingDate: "2025-10-11", currency: "INR", debit: 273000, credit: 0, amount: 273000,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: misc/correction", "Saturday", "high amount (4× mean)"],
+        anomalyDetection: { detected: true, score: 0.7116, factors: [
+          { type: "numericOutlier", weight: 0.4, score: 1.0, confidence: 1 },
+          { type: "behavioralAnomaly", weight: 0.35, score: 0.7, confidence: 1 },
+          { type: "semanticAnomaly", weight: 0.25, score: 0.2664, confidence: 1 }
+        ]}
+      },
+      {
+        entryNo: "JV/R2/S003", glNumber: "14002", name: "Deferred Commission Costs",
+        transactionType: "Journal Entry", description: "fix",
+        postingDate: "2025-10-05", currency: "INR", debit: 560000, credit: 0, amount: 560000,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: fix", "short description (3 chars)", "Sunday", "high amount (3.5× mean)"],
+        anomalyDetection: { detected: true, score: 0.8254, factors: [
+          { type: "numericOutlier", weight: 0.4, score: 1.0, confidence: 1 },
+          { type: "behavioralAnomaly", weight: 0.35, score: 1.0, confidence: 1 },
+          { type: "semanticAnomaly", weight: 0.25, score: 0.3017, confidence: 1 }
+        ]}
+      },
+      {
+        entryNo: "VCH/R2/S004", glNumber: "61002", name: "Payroll - Engineering",
+        transactionType: "Expense", description: "Manual payroll adjustment",
+        postingDate: "2025-10-14", currency: "INR", debit: 213000, credit: 0, amount: 213000,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: manual/adjustment", "high amount (3× mean)", "weekday"],
+        anomalyDetection: { detected: true, score: 0.6781, factors: [
+          { type: "numericOutlier", weight: 0.4, score: 1.0, confidence: 1 },
+          { type: "behavioralAnomaly", weight: 0.35, score: 0.6, confidence: 1 },
+          { type: "semanticAnomaly", weight: 0.25, score: 0.2722, confidence: 1 }
+        ]}
+      },
+      {
+        entryNo: "JV/R2/S005", glNumber: "41001", name: "SaaS Subscription Revenue",
+        transactionType: "Journal Entry", description: "Temp revenue entry",
+        postingDate: "2025-10-15", currency: "INR", debit: 0, credit: 690000, amount: -690000,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: temp", "high amount (2× mean)", "weekday"],
+        anomalyDetection: { detected: true, score: 0.6196, factors: [
+          { type: "numericOutlier", weight: 0.4, score: 0.8199, confidence: 1 },
+          { type: "behavioralAnomaly", weight: 0.35, score: 0.6, confidence: 1 },
+          { type: "semanticAnomaly", weight: 0.25, score: 0.3264, confidence: 1 }
+        ]}
+      },
+      {
+        entryNo: "VCH/R2/S010", glNumber: "61002", name: "Payroll - Engineering",
+        transactionType: "Expense", description: "Error fix - payroll repost",
+        postingDate: "2025-11-01", currency: "INR", debit: 213000, credit: 0, amount: 213000,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: error/fix", "Saturday", "high amount (3× mean)"],
+        anomalyDetection: { detected: true, score: 0.7403, factors: [
+          { type: "numericOutlier", weight: 0.4, score: 1.0, confidence: 1 },
+          { type: "behavioralAnomaly", weight: 0.35, score: 0.7, confidence: 1 },
+          { type: "semanticAnomaly", weight: 0.25, score: 0.3811, confidence: 1 }
+        ]}
+      },
+      {
+        entryNo: "JV/R2/S011", glNumber: "32001", name: "Deferred Revenue (Current Liability)",
+        transactionType: "Journal Entry", description: "Manual correction - deferred rev",
+        postingDate: "2025-11-05", currency: "INR", debit: 7000000, credit: 0, amount: 7000000,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: manual/correction", "amount above 3σ (7M vs 6.6M threshold)", "weekday"],
+        anomalyDetection: { detected: true, score: 0.6834, factors: [
+          { type: "numericOutlier", weight: 0.4, score: 1.0, confidence: 1 },
+          { type: "behavioralAnomaly", weight: 0.35, score: 0.6, confidence: 1 },
+          { type: "semanticAnomaly", weight: 0.25, score: 0.2937, confidence: 1 }
+        ]}
+      },
+      {
+        entryNo: "JV/R2/S006", glNumber: "11001", name: "HDFC Bank - Current A/c",
+        transactionType: "Journal Entry", description: "adj",
+        postingDate: "2025-10-20", currency: "INR", debit: 0, credit: 90000, amount: -90000,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: adj (behavioral only)", "normal amount (≈ mean)", "weekday"],
+        missReason: "Pure behavioral signal — amount 90k is near mean (91k). numericOutlier only 0.01. Behavioral 0.9 is strong but weighted average pulls composite to 0.36, below 0.60.",
+        anomalyDetection: { detected: false, score: 0.3649, factors: [
+          { type: "numericOutlier", weight: 0.4, score: 0.0127, confidence: 1 },
+          { type: "behavioralAnomaly", weight: 0.35, score: 0.9, confidence: 1 },
+          { type: "semanticAnomaly", weight: 0.25, score: 0.1794, confidence: 1 }
+        ]}
+      },
+      {
+        entryNo: "VCH/R2/S007", glNumber: "61001", name: "COGS - Cloud Hosting (AWS/GCP)",
+        transactionType: "Expense", description: "OK",
+        postingDate: "2025-10-21", currency: "INR", debit: 65000, credit: 0, amount: 65000,
+        postingBy: "claude_bot",
+        injectedSignals: ["short description (2 chars)", "normal amount (≈ mean)", "weekday"],
+        missReason: "Pure behavioral — amount 65k near mean (68k). Behavioral 0.4, outlier 0.05. Composite 0.22.",
+        anomalyDetection: { detected: false, score: 0.217, factors: [
+          { type: "numericOutlier", weight: 0.4, score: 0.046, confidence: 1 },
+          { type: "behavioralAnomaly", weight: 0.35, score: 0.4, confidence: 1 },
+          { type: "semanticAnomaly", weight: 0.25, score: 0.2345, confidence: 1 }
+        ]}
+      },
+      {
+        entryNo: "JV/R2/S008", glNumber: "14002", name: "Deferred Commission Costs",
+        transactionType: "Journal Entry", description: "Capitalized Sales Commission",
+        postingDate: "2025-10-22", currency: "INR", debit: 800000, credit: 0, amount: 800000,
+        postingBy: "claude_bot",
+        injectedSignals: ["high amount (5× mean) — outlier only", "clean normal description", "weekday"],
+        missReason: "Pure outlier — numericOutlier 1.0 but behavioralAnomaly only 0.1 (clean desc, weekday). Weighted average gives 0.435. Strong single signal diluted by clean signals.",
+        anomalyDetection: { detected: false, score: 0.435, factors: [
+          { type: "numericOutlier", weight: 0.4, score: 1.0, confidence: 1 },
+          { type: "behavioralAnomaly", weight: 0.35, score: 0.1, confidence: 1 },
+          { type: "semanticAnomaly", weight: 0.25, score: 0.0001, confidence: 1 }
+        ]}
+      },
+      {
+        entryNo: "JV/R2/S009", glNumber: "11001", name: "HDFC Bank - Current A/c",
+        transactionType: "Journal Entry", description: "Bank Payout",
+        postingDate: "2025-10-23", currency: "INR", debit: 0, credit: 456000, amount: -456000,
+        postingBy: "claude_bot",
+        injectedSignals: ["high amount (5× mean) — outlier only", "clean normal description", "weekday"],
+        missReason: "Pure outlier — numericOutlier 1.0, behavioralAnomaly 0.1 (Bank Payout is normal text). Composite 0.46, just below 0.60.",
+        anomalyDetection: { detected: false, score: 0.4566, factors: [
+          { type: "numericOutlier", weight: 0.4, score: 1.0, confidence: 1 },
+          { type: "behavioralAnomaly", weight: 0.35, score: 0.1, confidence: 1 },
+          { type: "semanticAnomaly", weight: 0.25, score: 0.0863, confidence: 1 }
+        ]}
+      },
+      {
+        entryNo: "JV/R2/S012", glNumber: "41001", name: "SaaS Subscription Revenue",
+        transactionType: "Journal Entry", description: "X",
+        postingDate: "2025-10-24", currency: "INR", debit: 0, credit: 340000, amount: -340000,
+        postingBy: "claude_bot",
+        injectedSignals: ["ultra-short description (1 char)", "normal amount (≈ mean)", "weekday"],
+        missReason: "Pure behavioral — 1-char desc triggers short description signal but amount 340k is at mean. Behavioral 0.4, outlier 0.02. Composite 0.22.",
+        anomalyDetection: { detected: false, score: 0.2235, factors: [
+          { type: "numericOutlier", weight: 0.4, score: 0.019, confidence: 1 },
+          { type: "behavioralAnomaly", weight: 0.35, score: 0.4, confidence: 1 },
+          { type: "semanticAnomaly", weight: 0.25, score: 0.3036, confidence: 1 }
+        ]}
+      }
+    ],
+    normal: TOP20_NORMAL
+  },
+
+  // ─────────────────────────────────────────────────────────────────
+  // RUN 3 — Combined + pure single-signal (GLs: 22001, 12001, 11001, 61002, 14002, 41001, 61001, 32001)
+  // ─────────────────────────────────────────────────────────────────
+  {
+    id: "run-003",
+    title: "Run 3 · Different GLs, late-night signal",
+    date: "2026-07-03",
+    sourceId: "69ba5a747822abafa3d7e93d-o9720g85dbmpzlsae6",
+    threshold: 0.60,
+    description: "12 injected entries across GL 22001, 12001, 11001, 61002, 14002, 41001, 61001, 32001. Introduces late-night timing signal (23:30). Same combined vs pure split — confirms pattern holds across all GL accounts in the dataset.",
+    injected: [
+      {
+        entryNo: "JV/R3/S001", glNumber: "22001", name: "Output IGST 18%",
+        transactionType: "Journal Entry", description: "GST adjustment - misc",
+        postingDate: "2025-09-06", currency: "INR", debit: 0, credit: 1150000, amount: -1150000,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: adjustment/misc", "Saturday", "high amount (2× mean)"],
+        anomalyDetection: { detected: true, score: 0.6124, factors: [
+          { type: "numericOutlier", weight: 0.4, score: 0.7868, confidence: 1 },
+          { type: "behavioralAnomaly", weight: 0.35, score: 0.7, confidence: 1 },
+          { type: "semanticAnomaly", weight: 0.25, score: 0.2106, confidence: 1 }
+        ]}
+      },
+      {
+        entryNo: "INV/R3/S002", glNumber: "12001", name: "Trade Receivables (Enterprise)",
+        transactionType: "Sales Invoice", description: "misc fix - receivable repost",
+        postingDate: "2025-09-07", currency: "INR", debit: 8500000, credit: 0, amount: 8500000,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: misc/fix", "Sunday", "amount above 3σ (8.5M)"],
+        anomalyDetection: { detected: true, score: 0.7128, factors: [
+          { type: "numericOutlier", weight: 0.4, score: 0.9076, confidence: 1 },
+          { type: "behavioralAnomaly", weight: 0.35, score: 0.7, confidence: 1 },
+          { type: "semanticAnomaly", weight: 0.25, score: 0.4191, confidence: 1 }
+        ]}
+      },
+      {
+        entryNo: "JV/R3/S003", glNumber: "11001", name: "HDFC Bank - Current A/c",
+        transactionType: "Journal Entry", description: "temp bank transfer",
+        postingDate: "2025-09-10", currency: "INR", debit: 0, credit: 365000, amount: -365000,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: temp", "late night 23:30", "high amount (4× mean)"],
+        anomalyDetection: { detected: true, score: 0.6535, factors: [
+          { type: "numericOutlier", weight: 0.4, score: 1.0, confidence: 1 },
+          { type: "behavioralAnomaly", weight: 0.35, score: 0.6, confidence: 1 },
+          { type: "semanticAnomaly", weight: 0.25, score: 0.1741, confidence: 1 }
+        ]}
+      },
+      {
+        entryNo: "VCH/R3/S004", glNumber: "61002", name: "Payroll - Engineering",
+        transactionType: "Expense", description: "Error correction - payroll",
+        postingDate: "2025-09-16", currency: "INR", debit: 213000, credit: 0, amount: 213000,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: error/correction", "high amount (3× mean)", "weekday"],
+        anomalyDetection: { detected: true, score: 0.6719, factors: [
+          { type: "numericOutlier", weight: 0.4, score: 1.0, confidence: 1 },
+          { type: "behavioralAnomaly", weight: 0.35, score: 0.6, confidence: 1 },
+          { type: "semanticAnomaly", weight: 0.25, score: 0.2477, confidence: 1 }
+        ]}
+      },
+      {
+        entryNo: "JV/R3/S005", glNumber: "14002", name: "Deferred Commission Costs",
+        transactionType: "Journal Entry", description: "adj",
+        postingDate: "2025-09-14", currency: "INR", debit: 480000, credit: 0, amount: 480000,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: adj", "short description (3 chars)", "Sunday", "high amount (3× mean)"],
+        anomalyDetection: { detected: true, score: 0.8215, factors: [
+          { type: "numericOutlier", weight: 0.4, score: 1.0, confidence: 1 },
+          { type: "behavioralAnomaly", weight: 0.35, score: 1.0, confidence: 1 },
+          { type: "semanticAnomaly", weight: 0.25, score: 0.2861, confidence: 1 }
+        ]}
+      },
+      {
+        entryNo: "VCH/R3/S010", glNumber: "61001", name: "COGS - Cloud Hosting (AWS/GCP)",
+        transactionType: "Expense", description: "Manual COGS adjustment",
+        postingDate: "2025-09-20", currency: "INR", debit: 273000, credit: 0, amount: 273000,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: manual/adjustment", "Saturday", "high amount (4× mean)"],
+        anomalyDetection: { detected: true, score: 0.7165, factors: [
+          { type: "numericOutlier", weight: 0.4, score: 1.0, confidence: 1 },
+          { type: "behavioralAnomaly", weight: 0.35, score: 0.7, confidence: 1 },
+          { type: "semanticAnomaly", weight: 0.25, score: 0.286, confidence: 1 }
+        ]}
+      },
+      {
+        entryNo: "VCH/R3/S011", glNumber: "61002", name: "Payroll - Engineering",
+        transactionType: "Expense", description: "misc payroll repost",
+        postingDate: "2025-09-21", currency: "INR", debit: 213000, credit: 0, amount: 213000,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: misc", "Sunday", "high amount (3× mean)"],
+        anomalyDetection: { detected: true, score: 0.7247, factors: [
+          { type: "numericOutlier", weight: 0.4, score: 1.0, confidence: 1 },
+          { type: "behavioralAnomaly", weight: 0.35, score: 0.7, confidence: 1 },
+          { type: "semanticAnomaly", weight: 0.25, score: 0.3188, confidence: 1 }
+        ]}
+      },
+      {
+        entryNo: "JV/R3/S006", glNumber: "41001", name: "SaaS Subscription Revenue",
+        transactionType: "Journal Entry", description: "fix",
+        postingDate: "2025-09-23", currency: "INR", debit: 0, credit: 340000, amount: -340000,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: fix (behavioral only)", "normal amount (≈ mean)", "weekday"],
+        missReason: "Pure behavioral — amount 340k near mean (344k). numericOutlier 0.01, behavioral 0.9. Composite 0.40, below threshold. Keyword alone without outlier is insufficient.",
+        anomalyDetection: { detected: false, score: 0.4031, factors: [
+          { type: "numericOutlier", weight: 0.4, score: 0.0115, confidence: 1 },
+          { type: "behavioralAnomaly", weight: 0.35, score: 0.9, confidence: 1 },
+          { type: "semanticAnomaly", weight: 0.25, score: 0.3339, confidence: 1 }
+        ]}
+      },
+      {
+        entryNo: "JV/R3/S007", glNumber: "22001", name: "Output IGST 18%",
+        transactionType: "Journal Entry", description: "OK",
+        postingDate: "2025-09-24", currency: "INR", debit: 0, credit: 577000, amount: -577000,
+        postingBy: "claude_bot",
+        injectedSignals: ["short description (2 chars)", "normal amount (≈ mean)", "weekday"],
+        missReason: "Pure behavioral — 577k is at mean for GL 22001. Short desc fires but outlier 0.01 pulls composite to 0.21.",
+        anomalyDetection: { detected: false, score: 0.2146, factors: [
+          { type: "numericOutlier", weight: 0.4, score: 0.0101, confidence: 1 },
+          { type: "behavioralAnomaly", weight: 0.35, score: 0.4, confidence: 1 },
+          { type: "semanticAnomaly", weight: 0.25, score: 0.2821, confidence: 1 }
+        ]}
+      },
+      {
+        entryNo: "JV/R3/S008", glNumber: "32001", name: "Deferred Revenue (Current Liability)",
+        transactionType: "Journal Entry", description: "Revenue Recog - Monthly Accrual",
+        postingDate: "2025-09-25", currency: "INR", debit: 6600000, credit: 0, amount: 6600000,
+        postingBy: "claude_bot",
+        injectedSignals: ["amount at 3σ boundary (6.6M) — outlier only", "clean normal description", "weekday"],
+        missReason: "Pure outlier — numericOutlier 0.96, but behavioralAnomaly only 0.1 (normal desc, weekday). Composite 0.44, just below 0.60. Confirms single strong signal is not enough.",
+        anomalyDetection: { detected: false, score: 0.4373, factors: [
+          { type: "numericOutlier", weight: 0.4, score: 0.9584, confidence: 1 },
+          { type: "behavioralAnomaly", weight: 0.35, score: 0.1, confidence: 1 },
+          { type: "semanticAnomaly", weight: 0.25, score: 0.0757, confidence: 1 }
+        ]}
+      },
+      {
+        entryNo: "INV/R3/S009", glNumber: "12001", name: "Trade Receivables (Enterprise)",
+        transactionType: "Sales Invoice", description: "Annual Enterprise Contract Billing",
+        postingDate: "2025-09-26", currency: "INR", debit: 9000000, credit: 0, amount: 9000000,
+        postingBy: "claude_bot",
+        injectedSignals: ["amount above 3σ (9M) — outlier only", "clean normal description", "weekday"],
+        missReason: "Pure outlier — numericOutlier 1.0, behavioralAnomaly 0.1 (Annual Enterprise Contract Billing is standard text). Composite 0.435. Same pattern as S008 in GL 32001.",
+        anomalyDetection: { detected: false, score: 0.435, factors: [
+          { type: "numericOutlier", weight: 0.4, score: 1.0, confidence: 1 },
+          { type: "behavioralAnomaly", weight: 0.35, score: 0.1, confidence: 1 },
+          { type: "semanticAnomaly", weight: 0.25, score: 0.0001, confidence: 1 }
+        ]}
+      },
+      {
+        entryNo: "JV/R3/S012", glNumber: "11001", name: "HDFC Bank - Current A/c",
+        transactionType: "Journal Entry", description: "correction",
+        postingDate: "2025-09-29", currency: "INR", debit: 0, credit: 88000, amount: -88000,
+        postingBy: "claude_bot",
+        injectedSignals: ["keyword: correction (behavioral only)", "normal amount (≈ mean)", "weekday"],
+        missReason: "Pure behavioral — 88k near mean (91k). Behavioral 0.6, outlier 0.02. Composite 0.27.",
+        anomalyDetection: { detected: false, score: 0.2687, factors: [
+          { type: "numericOutlier", weight: 0.4, score: 0.0223, confidence: 1 },
+          { type: "behavioralAnomaly", weight: 0.35, score: 0.6, confidence: 1 },
+          { type: "semanticAnomaly", weight: 0.25, score: 0.199, confidence: 1 }
+        ]}
+      }
+    ],
+    normal: TOP20_NORMAL
+  }
+];
+
+// ─────────────────────────────────────────────────────────────────
+// Rendering helpers
+// ─────────────────────────────────────────────────────────────────
+let activeRunId = TEST_RUNS[0].id;
+let activeTrigger = null;
+
+function fmt(n) {
+  if (n === 0) return '—';
+  return Math.abs(n).toLocaleString('en-IN');
+}
+
+function scoreClass(s) {
+  if (s >= 0.70) return 'rp-hi';
+  if (s >= 0.45) return 'rp-md';
+  return 'rp-lo';
+}
+
+function scoreColor(s) {
+  if (s >= 0.70) return 'var(--red)';
+  if (s >= 0.45) return 'var(--amber)';
+  return 'var(--green)';
+}
+
+function barClass(s) {
+  if (s >= 0.70) return 'bar-hi';
+  if (s >= 0.40) return 'bar-md';
+  if (s > 0) return 'bar-lo';
+  return 'bar-none';
+}
+
+function factorLabel(type) {
+  return { numericOutlier: 'Numeric outlier', behavioralAnomaly: 'Behavioral', semanticAnomaly: 'Semantic' }[type] || type;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Popover
+// ─────────────────────────────────────────────────────────────────
+const floatingPop = document.getElementById('floating-popover');
+
+function showPopover(btn, entry) {
+  const ad = entry.anomalyDetection;
+  const scoreStr = ad.score.toFixed(4);
+
+  let factorsHtml = ad.factors.map(f => {
+    const pct = Math.round(f.score * 100);
+    return `
+      <div class="pop-factor">
+        <span class="pop-factor-name">${factorLabel(f.type)} <span style="color:var(--text-muted);font-size:10px">w=${f.weight}</span></span>
+        <span class="pop-factor-score" style="color:${scoreColor(f.score)}">${f.score.toFixed(4)}</span>
+        <div class="pop-factor-bar-wrap">
+          <div class="pop-factor-bar ${barClass(f.score)}" style="width:${pct}%"></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  let signalsHtml = '';
+  if (entry.injectedSignals && entry.injectedSignals.length) {
+    const chips = entry.injectedSignals.map(s => `<span class="signal-chip">${s}</span>`).join('');
+    signalsHtml = `<div class="pop-signals">${chips}</div>`;
+  }
+
+  let missHtml = '';
+  if (entry.missReason) {
+    missHtml = `
+      <div style="margin-top:8px;padding:8px;background:var(--amber-bg);border-radius:6px;font-size:11px;color:var(--amber);line-height:1.5">
+        <strong style="display:block;margin-bottom:2px">Why missed</strong>${entry.missReason}
+      </div>`;
+  }
+
+  floatingPop.innerHTML = `
+    <div class="pop-header">
+      <div class="pop-entry">${entry.entryNo} · GL ${entry.glNumber}</div>
+      <div class="pop-desc">${entry.description}</div>
+    </div>
+    <div class="pop-score-row">
+      <span class="pop-score-num" style="color:${scoreColor(ad.score)}">${scoreStr}</span>
+      <span class="pop-score-label">composite score<br>${ad.detected ? '<span style="color:var(--red);font-weight:600">● DETECTED</span>' : '<span style="color:var(--text-muted)">○ not detected</span>'}</span>
+    </div>
+    <div class="pop-section-label">Rule factors</div>
+    ${factorsHtml}
+    ${signalsHtml}
+    ${missHtml}
+  `;
+
+  floatingPop.classList.add('show');
+
+  const rect = btn.getBoundingClientRect();
+  const popW = 260;
+  let left = rect.left + rect.width / 2 - popW / 2;
+  left = Math.max(8, Math.min(left, window.innerWidth - popW - 8));
+  floatingPop.style.left = left + 'px';
+  floatingPop.style.top = '0px';
+
+  requestAnimationFrame(() => {
+    const popH = floatingPop.getBoundingClientRect().height;
+    let top = rect.top - popH - 8;
+    if (top < 8) top = rect.bottom + 8;
+    floatingPop.style.top = top + 'px';
+  });
+}
+
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.rp[data-idx]');
+  if (btn) {
+    const runId = btn.dataset.run;
+    const idx = parseInt(btn.dataset.idx, 10);
+    const run = TEST_RUNS.find(r => r.id === runId);
+    const pool = btn.dataset.pool === 'injected' ? run.injected : run.normal;
+    const entry = pool[idx];
+
+    if (activeTrigger === btn && floatingPop.classList.contains('show')) {
+      floatingPop.classList.remove('show');
+      activeTrigger = null;
+    } else {
+      activeTrigger = btn;
+      showPopover(btn, entry);
+    }
+    e.stopPropagation();
+  } else if (!e.target.closest('#floating-popover')) {
+    floatingPop.classList.remove('show');
+    activeTrigger = null;
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────
+// Sidebar
+// ─────────────────────────────────────────────────────────────────
+function renderSidebar() {
+  const container = document.getElementById('sidebar-runs');
+  container.innerHTML = '';
+
+  TEST_RUNS.forEach(run => {
+    const detected = run.injected.filter(e => e.anomalyDetection.detected).length;
+    const total = run.injected.length;
+
+    const item = document.createElement('div');
+    item.className = 'run-item' + (run.id === activeRunId ? ' active' : '');
+    item.innerHTML = `
+      <div class="run-title">${run.title}</div>
+      <div class="run-meta">${run.date} · threshold ${run.threshold}</div>
+      <div class="run-pills">
+        <span class="run-pill rp-detect">${detected} detected</span>
+        <span class="run-pill rp-total">${total} injected</span>
+      </div>
+    `;
+    item.addEventListener('click', () => {
+      activeRunId = run.id;
+      renderSidebar();
+      renderMain();
+    });
+    container.appendChild(item);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Main content
+// ─────────────────────────────────────────────────────────────────
+function renderMain() {
+  const run = TEST_RUNS.find(r => r.id === activeRunId);
+  if (!run) return;
+
+  const detected = run.injected.filter(e => e.anomalyDetection.detected).length;
+  const missed = run.injected.length - detected;
+  const avgDetectedScore = run.injected
+    .filter(e => e.anomalyDetection.detected)
+    .reduce((s, e) => s + e.anomalyDetection.score, 0) / (detected || 1);
+  const avgNormalScore = run.normal
+    .reduce((s, e) => s + e.anomalyDetection.score, 0) / (run.normal.length || 1);
+
+  document.getElementById('run-title').textContent = run.title;
+  document.getElementById('run-subtitle').textContent = run.description;
+  document.getElementById('threshold-badge').textContent = `threshold ${run.threshold}`;
+
+  // stat bar
+  document.getElementById('stat-bar').innerHTML = `
+    <div class="stat-item">
+      <div class="stat-label">Injected entries</div>
+      <div class="stat-value blue">${run.injected.length}</div>
+      <div class="stat-sub">claude_bot</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label">Detected</div>
+      <div class="stat-value red">${detected}</div>
+      <div class="stat-sub">${Math.round(detected/run.injected.length*100)}% detection rate</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label">Missed</div>
+      <div class="stat-value amber">${missed}</div>
+      <div class="stat-sub">below threshold</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label">Avg detected score</div>
+      <div class="stat-value red">${avgDetectedScore.toFixed(4)}</div>
+      <div class="stat-sub">vs ${avgNormalScore.toFixed(4)} normal avg</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label">Top scoring normal</div>
+      <div class="stat-value">${run.normal.length}</div>
+      <div class="stat-sub">highest scored, no flag</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label">Threshold</div>
+      <div class="stat-value" style="font-size:16px">${run.threshold}</div>
+      <div class="stat-sub">weighted avg · detect if ≥</div>
+    </div>
+  `;
+
+  // content
+  const content = document.getElementById('content');
+  content.innerHTML = '';
+
+  // injected section
+  const detectedEntries = run.injected.filter(e => e.anomalyDetection.detected);
+  const missedEntries = run.injected.filter(e => !e.anomalyDetection.detected);
+
+  if (detectedEntries.length) {
+    content.innerHTML += `<div class="section-title">Detected — ${detectedEntries.length} flagged entries</div>`;
+    content.innerHTML += buildTable(run, run.injected.filter(e => e.anomalyDetection.detected).map(e => ({...e, _pool: 'injected', _origIdx: run.injected.indexOf(e)})), true);
+  }
+
+  if (missedEntries.length) {
+    content.innerHTML += `<div class="section-title" style="margin-top:8px">Missed — ${missedEntries.length} injected but not detected <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--amber)">click score for reason</span></div>`;
+    content.innerHTML += buildTable(run, run.injected.filter(e => !e.anomalyDetection.detected).map(e => ({...e, _pool: 'injected', _origIdx: run.injected.indexOf(e)})), true);
+  }
+
+  content.innerHTML += `<div class="section-title" style="margin-top:8px">Top 20 highest-scored real entries (no flag) — sorted by score desc</div>`;
+  content.innerHTML += buildTable(run, run.normal.map((e, i) => ({...e, _pool: 'normal', _origIdx: i})), false);
+}
+
+function buildTable(run, entries, isInjected) {
+  const rows = entries.map(entry => {
+    const ad = entry.anomalyDetection;
+    const rpClass = ad.detected ? scoreClass(ad.score) : (isInjected ? 'rp-md' : 'rp-normal');
+    const rowClass = ad.detected ? 'flagged' : '';
+    const injBadge = isInjected ? `<span class="injected-badge">injected</span>` : '';
+    const missBadge = isInjected && !ad.detected ? `<span class="miss-badge">missed</span>` : '';
+
+    return `
+      <tr class="${rowClass}">
+        <td>${entry.postingDate}</td>
+        <td>${entry.transactionType}</td>
+        <td class="entry-link">${entry.entryNo}${injBadge}${missBadge}</td>
+        <td>${entry.glNumber}</td>
+        <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis">${entry.name}</td>
+        <td>${entry.currency}</td>
+        <td class="num">${entry.debit ? fmt(entry.debit) : '—'}</td>
+        <td class="num">${entry.credit ? fmt(entry.credit) : '—'}</td>
+        <td class="desc-cell" title="${entry.description}">${entry.description}</td>
+        <td>${entry.postingBy}</td>
+        <td style="text-align:center">
+          <button class="rp ${rpClass}" data-idx="${entry._origIdx}" data-pool="${entry._pool}" data-run="${run.id}">
+            ${ad.score.toFixed(4)} ▾
+          </button>
+        </td>
+      </tr>`;
+  }).join('');
+
+  return `
+    <div class="tbl-wrap">
+      <div class="tbl-bar">
+        <span class="tbl-bar-label">General Ledger · ${run.sourceId}</span>
+        <span class="tbl-row-count">${entries.length} entries</span>
+      </div>
+      <div class="tbl-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th style="min-width:90px">Date</th>
+              <th style="min-width:100px">Type</th>
+              <th style="min-width:130px">Entry No</th>
+              <th style="min-width:55px">GL No</th>
+              <th style="min-width:140px">Name</th>
+              <th style="min-width:40px">Ccy</th>
+              <th class="num" style="min-width:80px">Debit</th>
+              <th class="num" style="min-width:80px">Credit</th>
+              <th style="min-width:160px">Description</th>
+              <th style="min-width:90px">Posted by</th>
+              <th style="min-width:75px;text-align:center">Score ▾</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────────────────────────
+renderSidebar();
+renderMain();
+</script>
+</body>
+</html>
