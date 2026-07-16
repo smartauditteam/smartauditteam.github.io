@@ -1,24 +1,24 @@
 {
-  "assets": [
+  "pages": [
     {
       "name": "README.md",
-      "path": "designs/assets/README.md"
+      "path": "designs/pages/README.md"
     },
     {
       "name": "README.md",
-      "path": "designs/assets/exports/README.md"
+      "path": "designs/pages/reports/README.md"
     },
     {
       "name": "README.md",
-      "path": "designs/assets/marketing/README.md"
+      "path": "designs/pages/analytics/README.md"
     },
     {
       "name": "README.md",
-      "path": "designs/assets/logos/README.md"
+      "path": "designs/pages/settings/README.md"
     },
     {
       "name": "README.md",
-      "path": "designs/assets/illustrations/README.md"
+      "path": "designs/pages/dashboard/README.md"
     }
   ],
   "foundations": [
@@ -32,7 +32,7 @@
     },
     {
       "name": "README.md",
-      "path": "designs/foundations/icons/README.md"
+      "path": "designs/foundations/spacing/README.md"
     },
     {
       "name": "README.md",
@@ -40,61 +40,13 @@
     },
     {
       "name": "README.md",
-      "path": "designs/foundations/spacing/README.md"
-    }
-  ],
-  "components": [
-    {
-      "name": "README.md",
-      "path": "designs/components/README.md"
-    },
-    {
-      "name": "README.md",
-      "path": "designs/components/buttons/README.md"
-    },
-    {
-      "name": "README.md",
-      "path": "designs/components/tables/README.md"
-    },
-    {
-      "name": "README.md",
-      "path": "designs/components/navigation/README.md"
-    },
-    {
-      "name": "README.md",
-      "path": "designs/components/charts/README.md"
-    },
-    {
-      "name": "README.md",
-      "path": "designs/components/forms/README.md"
+      "path": "designs/foundations/icons/README.md"
     }
   ],
   "archive": [
     {
       "name": "README.md",
       "path": "designs/archive/README.md"
-    }
-  ],
-  "pages": [
-    {
-      "name": "README.md",
-      "path": "designs/pages/README.md"
-    },
-    {
-      "name": "README.md",
-      "path": "designs/pages/settings/README.md"
-    },
-    {
-      "name": "README.md",
-      "path": "designs/pages/dashboard/README.md"
-    },
-    {
-      "name": "README.md",
-      "path": "designs/pages/analytics/README.md"
-    },
-    {
-      "name": "README.md",
-      "path": "designs/pages/reports/README.md"
     }
   ],
   "patterns": [
@@ -104,11 +56,11 @@
     },
     {
       "name": "README.md",
-      "path": "designs/patterns/onboarding/README.md"
+      "path": "designs/patterns/audit-management/README.md"
     },
     {
       "name": "README.md",
-      "path": "designs/patterns/audit-management/README.md"
+      "path": "designs/patterns/workflows/README.md"
     },
     {
       "name": "README.md",
@@ -116,7 +68,55 @@
     },
     {
       "name": "README.md",
-      "path": "designs/patterns/workflows/README.md"
+      "path": "designs/patterns/onboarding/README.md"
+    }
+  ],
+  "components": [
+    {
+      "name": "README.md",
+      "path": "designs/components/README.md"
+    },
+    {
+      "name": "README.md",
+      "path": "designs/components/forms/README.md"
+    },
+    {
+      "name": "README.md",
+      "path": "designs/components/charts/README.md"
+    },
+    {
+      "name": "README.md",
+      "path": "designs/components/tables/README.md"
+    },
+    {
+      "name": "README.md",
+      "path": "designs/components/buttons/README.md"
+    },
+    {
+      "name": "README.md",
+      "path": "designs/components/navigation/README.md"
+    }
+  ],
+  "assets": [
+    {
+      "name": "README.md",
+      "path": "designs/assets/README.md"
+    },
+    {
+      "name": "README.md",
+      "path": "designs/assets/exports/README.md"
+    },
+    {
+      "name": "README.md",
+      "path": "designs/assets/illustrations/README.md"
+    },
+    {
+      "name": "README.md",
+      "path": "designs/assets/logos/README.md"
+    },
+    {
+      "name": "README.md",
+      "path": "designs/assets/marketing/README.md"
     }
   ]
 }
