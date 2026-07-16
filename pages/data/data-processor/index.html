@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>data-processor — Architecture Overview</title>
+<style>
+
+/* ============================= RESET ============================= */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+/* ============================= TOKENS (light-first) ============================= */
+:root {
+  --brand: #1f7a6c;
+  --brand-strong: #155e53;
+  --brand-soft: #e4f2ef;
+  --brand-line: #bfe0d8;
+
+  --bg: #fbfaf7;
+  --surface: #ffffff;
+  --surface-2: #f3f1ea;
+  --border: #e6e2d6;
+  --border-strong: #d4cfbe;
+
+  --text: #201f1a;
+  --text-mid: #55534a;
+  --text-muted: #8a8779;
+
+  --code-bg: #14181a;
+  --code-text: #d9e3e0;
+  --code-border: #262b2d;
+  --code-key: #7fc9bd;
+  --code-str: #d0a86e;
+  --code-com: #7c8886;
+  --code-num: #c98a6b;
+
+  --amber: #9a6a1a;
+  --amber-bg: #f7ecd8;
+  --amber-border: #e6d3a8;
+  --red: #a43e3e;
+  --red-bg: #fbebeb;
+  --red-border: #eec9c9;
+  --green: #3f7d3a;
+  --green-bg: #eaf3e6;
+  --green-border: #cfe4c8;
+  --blue: #2f5fa8;
+  --blue-bg: #eaf0fb;
+  --blue-border: #cddaf2;
+  --purple: #6a4c9c;
+  --purple-bg: #f1ecf9;
+  --purple-border: #ded1ef;
+
+  --sidebar-w: 260px;
+  --content-w: 860px;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow: 0 1px 2px rgba(30,25,10,0.04), 0 8px 24px rgba(30,25,10,0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --brand: #33a69a; --brand-strong: #5cc4b8; --brand-soft: rgba(51,166,154,0.14); --brand-line: rgba(51,166,154,0.35);
+    --bg: #0b0f19; --surface: #111827; --surface-2: #161d2c; --border: #273449; --border-strong: #34435c;
+    --text: #f2f4f7; --text-mid: #b7c0cf; --text-muted: #7c8798;
+    --code-bg: #0a0e16; --code-text: #d9e3e0; --code-border: #1e2733; --code-key: #6fc7ba; --code-str: #e0b47c; --code-com: #5c6a72; --code-num: #d99b7c;
+    --amber: #e0b04a; --amber-bg: #2b2110; --amber-border: #4a3a18;
+    --red: #e08080; --red-bg: #2a1616; --red-border: #4a2424;
+    --green: #7fce78; --green-bg: #16261a; --green-border: #274a30;
+    --blue: #7ea6e0; --blue-bg: #141f30; --blue-border: #253a56;
+    --purple: #b6a0e0; --purple-bg: #201a30; --purple-border: #382d4d;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 30px rgba(0,0,0,0.35);
+  }
+}
+:root[data-theme="dark"] {
+  --brand: #33a69a; --brand-strong: #5cc4b8; --brand-soft: rgba(51,166,154,0.14); --brand-line: rgba(51,166,154,0.35);
+  --bg: #0b0f19; --surface: #111827; --surface-2: #161d2c; --border: #273449; --border-strong: #34435c;
+  --text: #f2f4f7; --text-mid: #b7c0cf; --text-muted: #7c8798;
+  --code-bg: #0a0e16; --code-text: #d9e3e0; --code-border: #1e2733; --code-key: #6fc7ba; --code-str: #e0b47c; --code-com: #5c6a72; --code-num: #d99b7c;
+  --amber: #e0b04a; --amber-bg: #2b2110; --amber-border: #4a3a18;
+  --red: #e08080; --red-bg: #2a1616; --red-border: #4a2424;
+  --green: #7fce78; --green-bg: #16261a; --green-border: #274a30;
+  --blue: #7ea6e0; --blue-bg: #141f30; --blue-border: #253a56;
+  --purple: #b6a0e0; --purple-bg: #201a30; --purple-border: #382d4d;
+  --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 30px rgba(0,0,0,0.35);
+}
+:root[data-theme="light"] {
+  --brand: #1f7a6c; --brand-strong: #155e53; --brand-soft: #e4f2ef; --brand-line: #bfe0d8;
+  --bg: #fbfaf7; --surface: #ffffff; --surface-2: #f3f1ea; --border: #e6e2d6; --border-strong: #d4cfbe;
+  --text: #201f1a; --text-mid: #55534a; --text-muted: #8a8779;
+  --code-bg: #14181a; --code-text: #d9e3e0; --code-border: #262b2d; --code-key: #7fc9bd; --code-str: #d0a86e; --code-com: #7c8886; --code-num: #c98a6b;
+  --amber: #9a6a1a; --amber-bg: #f7ecd8; --amber-border: #e6d3a8;
+  --red: #a43e3e; --red-bg: #fbebeb; --red-border: #eec9c9;
+  --green: #3f7d3a; --green-bg: #eaf3e6; --green-border: #cfe4c8;
+  --blue: #2f5fa8; --blue-bg: #eaf0fb; --blue-border: #cddaf2;
+  --purple: #6a4c9c; --purple-bg: #f1ecf9; --purple-border: #ded1ef;
+  --shadow: 0 1px 2px rgba(30,25,10,0.04), 0 8px 24px rgba(30,25,10,0.05);
+}
+
+/* ============================= BASE ============================= */
+body {
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.layout { display: flex; min-height: 100vh; }
+
+/* ── Sidebar ── */
+.sidebar {
+  width: var(--sidebar-w); flex-shrink: 0; position: sticky; top: 0; height: 100vh;
+  overflow-y: auto; background: var(--surface); border-right: 1px solid var(--border);
+  padding: 26px 0 40px;
+}
+.sidebar-brand { padding: 0 22px 18px; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+.sidebar-brand .mark { display: inline-flex; align-items: center; gap: 9px; font-weight: 700; font-size: 14.5px; letter-spacing: -0.01em; }
+.sidebar-brand .dot { width: 9px; height: 9px; border-radius: 2px; background: var(--brand); flex-shrink: 0; }
+.sidebar-brand .sub { margin-top: 6px; font-size: 11.5px; color: var(--text-muted); line-height: 1.5; }
+.sidebar-brand .sub code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+
+.sidebar-tabs { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+.tab-btn {
+  display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: var(--radius-sm);
+  font-size: 12.5px; font-weight: 600; color: var(--text-mid); cursor: pointer; border: 1px solid transparent;
+  background: transparent; text-align: left; width: 100%;
+}
+.tab-btn:hover { background: var(--surface-2); }
+.tab-btn.active { background: var(--brand-soft); color: var(--brand-strong); border-color: var(--brand-line); }
+.tab-btn .ic { width: 15px; text-align: center; flex-shrink: 0; opacity: 0.85; }
+
+.sidebar-nav { padding: 6px 12px; }
+.nav-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--text-muted); padding: 12px 12px 6px; }
+.nav-link {
+  display: flex; align-items: baseline; gap: 8px; padding: 6px 12px; border-radius: var(--radius-sm);
+  font-size: 13px; color: var(--text-mid); text-decoration: none; transition: background 0.12s, color 0.12s;
+}
+.nav-link:hover { background: var(--surface-2); color: var(--text); }
+.nav-link.active { background: var(--brand-soft); color: var(--brand-strong); font-weight: 600; }
+.nav-link .n { font-variant-numeric: tabular-nums; color: var(--text-muted); font-size: 11px; min-width: 14px; }
+.nav-link.active .n { color: var(--brand-strong); }
+
+/* ── Main content ── */
+.main { flex: 1; min-width: 0; display: flex; justify-content: center; }
+.content { width: 100%; max-width: var(--content-w); padding: 52px 40px 120px; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ── Header ── */
+.doc-eyebrow { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--brand-strong); margin-bottom: 10px; }
+.doc-title { font-size: 33px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; text-wrap: balance; margin-bottom: 14px; }
+.doc-dek { font-size: 16px; color: var(--text-mid); max-width: 66ch; line-height: 1.65; margin-bottom: 26px; }
+
+.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 44px; }
+.stat { background: var(--surface); padding: 16px 18px; }
+.stat .v { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.stat .l { font-size: 11.5px; color: var(--text-muted); margin-top: 3px; }
+
+/* ── Sections ── */
+section.block { margin-bottom: 60px; scroll-margin-top: 32px; }
+.block-head { margin-bottom: 20px; }
+.block-eyebrow { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--text-muted); margin-bottom: 6px; }
+h2.block-title { font-size: 22px; font-weight: 700; letter-spacing: -0.015em; text-wrap: balance; }
+.block-dek { font-size: 14.5px; color: var(--text-mid); margin-top: 8px; max-width: 68ch; line-height: 1.65; }
+
+p { color: var(--text-mid); margin-bottom: 14px; max-width: 70ch; }
+p:last-child { margin-bottom: 0; }
+strong { color: var(--text); font-weight: 600; }
+code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.9em; }
+
+h3.sub-title { font-size: 16px; font-weight: 700; margin: 26px 0 10px; letter-spacing: -0.01em; }
+h4.sub-sub { font-size: 13px; font-weight: 700; margin: 18px 0 8px; color: var(--text-mid); text-transform: uppercase; letter-spacing: 0.04em; }
+
+ul.plain, ol.plain { margin: 12px 0 16px 0; padding-left: 0; list-style: none; }
+ul.plain li, ol.plain li { position: relative; padding-left: 20px; margin-bottom: 9px; color: var(--text-mid); font-size: 14.5px; line-height: 1.6; }
+ul.plain li::before { content: ''; position: absolute; left: 4px; top: 9px; width: 5px; height: 5px; border-radius: 1px; background: var(--brand); }
+ul.plain li strong { color: var(--text); }
+ol.plain { counter-reset: step; }
+ol.plain li { padding-left: 26px; }
+ol.plain li::before { content: counter(step); counter-increment: step; font-family: ui-monospace, monospace; font-size: 11px; font-weight: 700; color: var(--brand-strong); background: var(--brand-soft); width: 16px; height: 16px; border-radius: 4px; display: flex; align-items: center; justify-content: center; top: 1px; left: 0; }
+
+/* ── Code panels ── */
+.code-panel { background: var(--code-bg); border: 1px solid var(--code-border); border-radius: var(--radius); overflow: hidden; margin: 16px 0 20px; box-shadow: var(--shadow); }
+.code-panel .file-tab { display: flex; align-items: center; justify-content: space-between; padding: 9px 16px; border-bottom: 1px solid var(--code-border); background: rgba(255,255,255,0.02); }
+.code-panel .file-tab .path { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11.5px; color: var(--code-com); }
+.code-panel .file-tab .path b { color: var(--brand-strong); font-weight: 600; }
+.code-panel pre { margin: 0; padding: 16px 18px; overflow-x: auto; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12.5px; line-height: 1.65; color: var(--code-text); }
+.code-panel code { white-space: pre; font-size: 1em; }
+.tok-kw { color: var(--code-key); } .tok-str { color: var(--code-str); } .tok-com { color: var(--code-com); font-style: italic; } .tok-num { color: var(--code-num); } .tok-fn { color: var(--brand-strong); }
+
+/* ============================= DIAGRAMS ============================= */
+
+/* Pipeline chain (horizontal stage cards) */
+.pipeline { display: flex; align-items: stretch; gap: 0; margin: 20px 0 24px; overflow-x: auto; padding-bottom: 8px; }
+.pipeline .stage { flex-shrink: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 13px 16px; min-width: 138px; box-shadow: var(--shadow); }
+.pipeline .stage .t { font-size: 12.5px; font-weight: 700; }
+.pipeline .stage .d { font-size: 10.5px; color: var(--text-muted); margin-top: 2px; line-height: 1.4; }
+.pipeline .arrow { flex-shrink: 0; display: flex; align-items: center; padding: 0 8px; color: var(--text-muted); }
+
+/* Swimlane diagram: actors as rows, steps as connected nodes */
+.swimlane { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); overflow: hidden; margin: 20px 0 24px; }
+.lane { display: flex; border-bottom: 1px solid var(--border); }
+.lane:last-child { border-bottom: none; }
+.lane-label { flex-shrink: 0; width: 132px; padding: 14px 14px; background: var(--surface-2); border-right: 1px solid var(--border); font-size: 11.5px; font-weight: 700; color: var(--text-mid); display: flex; align-items: center; }
+.lane-track { flex: 1; display: flex; align-items: center; gap: 10px; padding: 14px 16px; overflow-x: auto; }
+.lnode { flex-shrink: 0; display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: var(--bg); min-width: 118px; }
+.lnode .t { font-size: 11.5px; font-weight: 700; }
+.lnode .d { font-size: 10px; color: var(--text-muted); }
+.lnode.accent { background: var(--brand-soft); border-color: var(--brand-line); }
+.lnode.accent .t { color: var(--brand-strong); }
+.lconn { flex-shrink: 0; color: var(--text-muted); font-size: 13px; }
+
+/* Decision / branch diagram */
+.branch-diagram { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); padding: 20px; margin: 20px 0 24px; }
+.branch-root { display: flex; justify-content: center; margin-bottom: 4px; }
+.branch-root .node { background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 9px 16px; font-size: 12.5px; font-weight: 700; }
+.branch-lines { display: flex; justify-content: center; }
+.branch-lines svg { display: block; }
+.branch-row { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; }
+.branch-card { flex: 1; min-width: 180px; max-width: 260px; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; background: var(--bg); }
+.branch-card .cond { font-family: ui-monospace, monospace; font-size: 10.5px; color: var(--brand-strong); background: var(--brand-soft); display: inline-block; padding: 2px 7px; border-radius: 4px; margin-bottom: 6px; }
+.branch-card .res { font-size: 12px; color: var(--text-mid); line-height: 1.5; }
+
+/* Function cards — collapsed by default, click to reveal detail + code */
+.fn-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 18px 0 24px; }
+.fn-card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); overflow: hidden; }
+.fn-card-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 16px; background: var(--surface-2); cursor: pointer; user-select: none;
+  border: none; width: 100%; text-align: left; font: inherit; color: inherit;
+}
+.fn-card-head:hover { background: var(--border); }
+.fn-card.open .fn-card-head { border-bottom: 1px solid var(--border); }
+.fn-head-left { display: flex; align-items: baseline; gap: 10px; min-width: 0; flex-wrap: wrap; }
+.fn-name { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 13px; font-weight: 700; color: var(--text); }
+.fn-file { font-size: 10.5px; color: var(--text-muted); font-family: ui-monospace, monospace; }
+.fn-oneline { font-size: 12.5px; color: var(--text-mid); font-weight: 400; }
+.fn-chev { flex-shrink: 0; font-size: 11px; color: var(--text-muted); transition: transform 0.15s; }
+.fn-card.open .fn-chev { transform: rotate(90deg); }
+.fn-body { padding: 14px 16px; display: none; }
+.fn-card.open .fn-body { display: block; }
+.fn-what { font-size: 13.5px; color: var(--text-mid); margin-bottom: 12px; line-height: 1.6; }
+.fn-io { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 4px; }
+.fn-io .box { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 11px; background: var(--bg); }
+.fn-io .box.in { border-left: 3px solid var(--blue); }
+.fn-io .box.out { border-left: 3px solid var(--green); }
+.fn-io .lbl { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 4px; }
+.fn-io .val { font-size: 12px; color: var(--text-mid); font-family: ui-monospace, monospace; line-height: 1.5; }
+.fn-code-toggle, .code-toggle-btn { margin-top: 4px; font-size: 11.5px; font-weight: 600; color: var(--brand-strong); background: var(--brand-soft); border: 1px solid var(--brand-line); border-radius: 20px; padding: 4px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.fn-code-toggle:hover, .code-toggle-btn:hover { background: var(--brand-line); }
+.fn-code-body { display: none; margin-top: 10px; }
+.fn-card.code-open .fn-code-body { display: block; }
+.fn-card.code-open .fn-code-toggle .cta-show { display: none; }
+.fn-card:not(.code-open) .fn-code-toggle .cta-hide { display: none; }
+/* Standalone collapsible code (outside fn-card) */
+.code-collapse { margin: 14px 0 20px; }
+.code-collapse .code-panel { display: none; margin: 10px 0 0; }
+.code-collapse.open .code-panel { display: block; }
+.code-collapse.open .code-toggle-btn .cta-show { display: none; }
+.code-collapse:not(.open) .code-toggle-btn .cta-hide { display: none; }
+
+/* Timeline / sequence for observability & rate limiter windows */
+.timeline { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); padding: 18px 20px; margin: 18px 0 24px; }
+.timeline-track { position: relative; height: 54px; margin: 10px 0 6px; }
+.timeline-base { position: absolute; left: 0; right: 0; top: 27px; height: 2px; background: var(--border-strong); }
+.timeline-pt { position: absolute; top: 15px; width: 24px; height: 24px; border-radius: 50%; background: var(--brand); border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--brand-line); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; }
+.timeline-pt.wait { background: var(--amber); box-shadow: 0 0 0 1px var(--amber-border); }
+.timeline-lbl { position: absolute; top: 44px; font-size: 10px; color: var(--text-muted); white-space: nowrap; transform: translateX(-50%); }
+.timeline-window { position: absolute; top: 8px; height: 38px; background: var(--brand-soft); border: 1px dashed var(--brand-line); border-radius: 6px; }
+
+/* Cards / grids */
+.card-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 18px 0 20px; }
+.mini-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; }
+.mini-card .t { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+.mini-card .d { font-size: 12px; color: var(--text-muted); line-height: 1.55; }
+
+.rule-table, .ref-table, .event-table { width: 100%; border-collapse: collapse; margin: 16px 0 20px; font-size: 13px; }
+.rule-table th, .event-table th { text-align: left; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); padding: 0 12px 8px; border-bottom: 1px solid var(--border-strong); }
+.rule-table td, .event-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text-mid); vertical-align: top; }
+.rule-table tr:last-child td, .event-table tr:last-child td { border-bottom: none; }
+.rule-table td.key, .event-table td.key { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; color: var(--text); font-weight: 600; white-space: nowrap; }
+.rule-table .fam-badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.04em; }
+.fam-risk { background: var(--amber-bg); color: var(--amber); }
+.fam-anomaly { background: var(--brand-soft); color: var(--brand-strong); }
+
+.ref-table td { padding: 7px 0; border-bottom: 1px solid var(--border); color: var(--text-muted); font-size: 12.5px; }
+.ref-table td:first-child { font-family: ui-monospace, 'SF Mono', Menlo, monospace; color: var(--text-mid); width: 46%; white-space: nowrap; }
+.ref-table tr:last-child td { border-bottom: none; }
+
+/* Callouts */
+.callout { border: 1px solid var(--border); border-left: 3px solid var(--brand); background: var(--surface); border-radius: var(--radius-sm); padding: 16px 18px; margin: 18px 0; }
+.callout.warn { border-left-color: var(--amber); }
+.callout.info { border-left-color: var(--blue); }
+.callout .cal-t { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+.callout.warn .cal-t { color: var(--amber); }
+.callout.info .cal-t { color: var(--blue); }
+.callout:not(.warn):not(.info) .cal-t { color: var(--brand-strong); }
+.callout p { font-size: 13.5px; margin-bottom: 6px; }
+
+/* Observability dashboard mock */
+.dash-mock { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); margin: 18px 0 24px; background: var(--surface); }
+.dash-mock .dm-header { display: flex; align-items: center; gap: 14px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--surface-2); flex-wrap: wrap; }
+.dash-mock .dm-brand { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; }
+.dash-mock .dm-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+.dash-mock .dm-pill { display: flex; align-items: center; gap: 5px; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 3px 9px; font-size: 11px; }
+.dash-mock .dm-pill .pl { color: var(--text-muted); }
+.dash-mock .dm-pill .pv { font-family: ui-monospace, monospace; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--brand-strong); }
+.dash-mock .dm-tabs { display: flex; gap: 2px; padding: 0 16px; border-bottom: 1px solid var(--border); background: var(--surface); }
+.dash-mock .dm-tab { padding: 9px 14px; font-size: 12px; font-weight: 600; color: var(--text-muted); border-bottom: 2px solid transparent; }
+.dash-mock .dm-tab.on { color: var(--brand-strong); border-bottom-color: var(--brand); }
+.dash-mock .dm-body { padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.dash-mock .dm-card { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; background: var(--bg); }
+.dash-mock .dm-card .ct { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px; }
+.dash-mock .dm-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px dashed var(--border); }
+.dash-mock .dm-row:last-child { border-bottom: none; }
+.dash-mock .dm-row .k { color: var(--text-muted); }
+.dash-mock .dm-row .v { font-family: ui-monospace, monospace; font-weight: 600; color: var(--text); }
+.dash-mock .dm-log { grid-column: 1 / -1; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--code-bg); padding: 10px 12px; font-family: ui-monospace, monospace; font-size: 11px; color: var(--code-text); line-height: 1.8; max-height: 140px; overflow-y: auto; }
+.dash-mock .dm-log .tag { color: var(--code-key); }
+.dash-mock .dm-log .tm { color: var(--code-com); }
+
+.divider { height: 1px; background: var(--border); margin: 52px 0; border: none; }
+.footer-note { margin-top: 44px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-muted); }
+
+/* ── Responsive ── */
+@media (max-width: 880px) {
+  .sidebar { display: none; }
+  .content { padding: 32px 20px 80px; }
+  .stat-row, .card-grid, .fn-io, .dash-mock .dm-body { grid-template-columns: 1fr; }
+  .lane { flex-direction: column; }
+  .lane-label { width: auto; border-right: none; border-bottom: 1px solid var(--border); }
+}
+@media (max-width: 520px) {
+  .stat-row, .card-grid { grid-template-columns: 1fr; }
+  .doc-title { font-size: 25px; }
+}
+
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ============================= SIDEBAR ============================= -->
+  <nav class="sidebar" aria-label="Section navigation">
+    <div class="sidebar-brand">
+      <div class="mark"><span class="dot"></span>data-processor</div>
+      <div class="sub">Engineering overview · <code>feature/je-testing</code></div>
+    </div>
+
+    <div class="sidebar-tabs">
+      <button class="tab-btn active" data-tab="arch"><span class="ic">◆</span>Architecture</button>
+      <button class="tab-btn" data-tab="observability"><span class="ic">◎</span>Observability</button>
+      <button class="tab-btn" data-tab="algorithms"><span class="ic">∑</span>Algorithms</button>
+    </div>
+
+    <div class="sidebar-nav" data-nav-for="arch">
+      <div class="nav-label">Overview</div>
+      <a class="nav-link active" href="#overview"><span class="n">·</span>Summary</a>
+      <div class="nav-label">Pipeline</div>
+      <a class="nav-link" href="#flow"><span class="n">01</span>End-to-end flow</a>
+      <a class="nav-link" href="#queue"><span class="n">02</span>Task queue &amp; concurrency</a>
+      <a class="nav-link" href="#resume"><span class="n">03</span>Resumable processing</a>
+      <a class="nav-link" href="#analysis"><span class="n">04</span>Analysis pipeline</a>
+      <a class="nav-link" href="#rules"><span class="n">05</span>Rules engine &amp; registry</a>
+      <a class="nav-link" href="#ai"><span class="n">06</span>AI / embeddings integration</a>
+      <div class="nav-label">Wrap-up</div>
+      <a class="nav-link" href="#highlights"><span class="n">07</span>Engineering highlights</a>
+      <a class="nav-link" href="#hardening"><span class="n">08</span>Known hardening items</a>
+      <a class="nav-link" href="#reference"><span class="n">09</span>File reference</a>
+    </div>
+
+    <div class="sidebar-nav" data-nav-for="observability" style="display:none">
+      <div class="nav-label">Live system view</div>
+      <a class="nav-link" href="#obs-overview"><span class="n">·</span>How to access it</a>
+      <a class="nav-link" href="#obs-events"><span class="n">01</span>Event model</a>
+      <a class="nav-link" href="#obs-dashboard"><span class="n">02</span>Dashboard layout</a>
+      <a class="nav-link" href="#obs-pipeline"><span class="n">03</span>Data path: emit → dashboard</a>
+      <a class="nav-link" href="#obs-persist"><span class="n">04</span>Replay buffer &amp; NDJSON log</a>
+    </div>
+
+    <div class="sidebar-nav" data-nav-for="algorithms" style="display:none">
+      <div class="nav-label">Rate control math</div>
+      <a class="nav-link" href="#alg-overview"><span class="n">·</span>Why two limiters</a>
+      <a class="nav-link" href="#alg-rps"><span class="n">01</span>RateLimiter (RPS window)</a>
+      <a class="nav-link" href="#alg-tpm"><span class="n">02</span>TokenWindowLimiter (TPM window)</a>
+      <a class="nav-link" href="#alg-estimate"><span class="n">03</span>Token estimation</a>
+      <a class="nav-link" href="#alg-batching"><span class="n">04</span>Token-aware batching</a>
+      <a class="nav-link" href="#alg-retry"><span class="n">05</span>Retry &amp; backoff</a>
+    </div>
+  </nav>
+
+  <!-- ============================= MAIN ============================= -->
+  <main class="main">
+    <div class="content">
+
+      <!-- ================================================================= -->
+      <!-- TAB 1: ARCHITECTURE                                                -->
+      <!-- ================================================================= -->
+      <div class="tab-panel active" id="panel-arch">
+
+        <header id="overview">
+          <div class="doc-eyebrow">Architecture overview</div>
+          <h1 class="doc-title">A scored, rate-limited pipeline for turning raw ledger data into fraud &amp; risk signal</h1>
+          <p class="doc-dek">
+            <code>data-processor</code> ingests uploaded general-ledger data, generates AI embeddings for every
+            entry, runs a pluggable rules engine over them to produce risk and anomaly scores, and does all of
+            it through a priority-aware, checkpointed task queue — so it survives crashes, doesn't starve small
+            jobs behind large ones, and never overruns a model provider's rate limits.
+          </p>
+          <div class="stat-row">
+            <div class="stat"><div class="v">89</div><div class="l">files changed</div></div>
+            <div class="stat"><div class="v">~8.9k</div><div class="l">lines added</div></div>
+            <div class="stat"><div class="v">40</div><div class="l">commits</div></div>
+            <div class="stat"><div class="v">10</div><div class="l">registered scoring rules</div></div>
+          </div>
+        </header>
+
+        <!-- 01 FLOW -->
+        <section class="block" id="flow">
+          <div class="block-head">
+            <div class="block-eyebrow">01 — Pipeline</div>
+            <h2 class="block-title">End-to-end flow</h2>
+            <p class="block-dek">One "content task" runs a sequence of analysis actions in order, streaming the
+              underlying collection in batches rather than loading it into memory.</p>
+          </div>
+
+          <div class="pipeline">
+            <div class="stage"><div class="t">Task queued</div><div class="d">Mongo status doc</div></div>
+            <div class="arrow">→</div>
+            <div class="stage"><div class="t">TaskQueue</div><div class="d">priority + concurrency</div></div>
+            <div class="arrow">→</div>
+            <div class="stage"><div class="t">TasksProcessor</div><div class="d">batch streaming</div></div>
+            <div class="arrow">→</div>
+            <div class="stage"><div class="t">Embeddings</div><div class="d">Bedrock vectors</div></div>
+            <div class="arrow">→</div>
+            <div class="stage"><div class="t">RiskScoring</div><div class="d">8 rules</div></div>
+            <div class="arrow">→</div>
+            <div class="stage"><div class="t">AnomalyDetection</div><div class="d">2 rules</div></div>
+            <div class="arrow">→</div>
+            <div class="stage"><div class="t">OverallScoring</div><div class="d">combined score</div></div>
+          </div>
+
+          <h3 class="sub-title">Who does what, in what order</h3>
+          <p>A swimlane view of the same flow — each row is a distinct actor, each node is a discrete step it
+            performs before handing off to the next lane.</p>
+
+          <div class="swimlane">
+            <div class="lane">
+              <div class="lane-label">Client / API</div>
+              <div class="lane-track">
+                <div class="lnode"><div class="t">Upload source</div><div class="d">creates task doc, status=queued</div></div>
+                <div class="lconn">→</div>
+                <div class="lnode accent"><div class="t">enqueue(taskId)</div><div class="d">TaskQueue.enqueue()</div></div>
+              </div>
+            </div>
+            <div class="lane">
+              <div class="lane-label">TaskQueue</div>
+              <div class="lane-track">
+                <div class="lnode"><div class="t">Assign priority</div><div class="d">by totalRecords</div></div>
+                <div class="lconn">→</div>
+                <div class="lnode"><div class="t">Wait for a free slot</div><div class="d">WorkerQueue.canAccept()</div></div>
+                <div class="lconn">→</div>
+                <div class="lnode accent"><div class="t">Hand off task</div><div class="d">TasksProcessor.process()</div></div>
+              </div>
+            </div>
+            <div class="lane">
+              <div class="lane-label">TasksProcessor</div>
+              <div class="lane-track">
+                <div class="lnode"><div class="t">Group actions by order</div><div class="d">e.g. embeddings first</div></div>
+                <div class="lconn">→</div>
+                <div class="lnode"><div class="t">Stream batch (500 docs)</div><div class="d">Mongo cursor</div></div>
+                <div class="lconn">→</div>
+                <div class="lnode accent"><div class="t">Run every active handler</div><div class="d">per batch</div></div>
+                <div class="lconn">→</div>
+                <div class="lnode"><div class="t">Merge &amp; bulkWrite</div><div class="d">one write per doc</div></div>
+              </div>
+            </div>
+            <div class="lane">
+              <div class="lane-label">Analysis handlers</div>
+              <div class="lane-track">
+                <div class="lnode"><div class="t">Embeddings</div><div class="d">text → Bedrock → vector</div></div>
+                <div class="lconn">→</div>
+                <div class="lnode"><div class="t">RiskScoring</div><div class="d">rules → factors → score</div></div>
+                <div class="lconn">→</div>
+                <div class="lnode"><div class="t">AnomalyDetection</div><div class="d">vector vs centroid</div></div>
+                <div class="lconn">→</div>
+                <div class="lnode"><div class="t">OverallScoring</div><div class="d">average the two scores</div></div>
+              </div>
+            </div>
+          </div>
+
+          <p>Stages that share an <code>order</code> run together against the same batch of documents, and their
+            per-document writes are merged into a single <code>bulkWrite</code> — a document touched by three
+            analyses in the same pass still gets one update, not three.</p>
+        </section>
+
+        <!-- 02 QUEUE -->
+        <section class="block" id="queue">
+          <div class="block-head">
+            <div class="block-eyebrow">02 — Concurrency</div>
+            <h2 class="block-title">Task queue &amp; concurrency control</h2>
+            <p class="block-dek">Three layered primitives, each generic enough to reuse outside this pipeline.</p>
+          </div>
+
+          <div class="card-grid">
+            <div class="mini-card"><div class="t">TaskQueue</div><div class="d">Singleton job queue. Loads queued/in-progress tasks from Mongo on boot, refills itself as workers free up, caches source config per <code>sourceKey</code>.</div></div>
+            <div class="mini-card"><div class="t">WorkerQueue</div><div class="d">Generic N-concurrent-worker limiter with an optional global rate cap and an <code>onComplete</code> hook — not specific to GL processing.</div></div>
+            <div class="mini-card"><div class="t">RequestQueue</div><div class="d">Bounded-concurrency runner for a list of async items (default chunk size 4). Used inside the rules engine and the Bedrock client alike.</div></div>
+            <div class="mini-card"><div class="t">Priority split</div><div class="d">Jobs ≥ 5,000 records are "low" priority, capped at 5 of the 10 total worker slots — a handful of large jobs can never occupy every worker.</div></div>
+          </div>
+
+          <h3 class="sub-title">How a job is admitted (decision diagram)</h3>
+          <div class="branch-diagram">
+            <div class="branch-root"><div class="node">New task arrives at TaskQueue</div></div>
+            <div class="branch-lines">
+              <svg width="360" height="34" viewBox="0 0 360 34"><path d="M180 0 L180 12 M180 12 L40 12 L40 34 M180 12 L320 12 L320 34" stroke="var(--border-strong)" stroke-width="2" fill="none"/></svg>
+            </div>
+            <div class="branch-row">
+              <div class="branch-card">
+                <div class="cond">totalRecords ≥ 5,000</div>
+                <div class="res">Priority = <strong>low</strong>. Can only start if fewer than 5 low-priority tasks are already running.</div>
+              </div>
+              <div class="branch-card">
+                <div class="cond">totalRecords &lt; 5,000</div>
+                <div class="res">Priority = <strong>high</strong>. Only blocked if all 10 worker slots are full.</div>
+              </div>
+            </div>
+          </div>
+
+          <h4 class="sub-sub">How admission is decided — click to expand</h4>
+          <div class="fn-grid">
+            <div class="fn-card">
+              <button class="fn-card-head">
+                <div class="fn-head-left"><span class="fn-name">_getPriority()</span><span class="fn-oneline">— routes a task to the low or high priority lane based on record count</span></div>
+                <span class="fn-chev">▶</span>
+              </button>
+              <div class="fn-body">
+                <div class="fn-what">Looks at how many records a task will process and decides whether it competes for the shared "low priority" lane or the general worker pool.</div>
+                <div class="fn-io">
+                  <div class="box in"><div class="lbl">In</div><div class="val">totalRecords: number</div></div>
+                  <div class="box out"><div class="lbl">Out</div><div class="val">WorkerPriority.low | high</div></div>
+                </div>
+                <button class="fn-code-toggle"><span class="cta-show">▸ show code</span><span class="cta-hide">▾ hide code</span></button>
+                <div class="fn-code-body">
+                  <div class="code-panel" style="margin:10px 0 0;">
+                    <div class="file-tab"><span class="path">task-queue/<b>index.ts</b></span></div>
+                    <pre><code><span class="tok-kw">private</span> _getPriority(totalRecords: <span class="tok-kw">number</span>): WorkerPriority {
+    <span class="tok-kw">return</span> totalRecords &gt;= PRIORITY_THRESHOLD_RECORDS ? WorkerPriority.low : WorkerPriority.high;
+}</code></pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="fn-card">
+              <button class="fn-card-head">
+                <div class="fn-head-left"><span class="fn-name">_canAccept()</span><span class="fn-oneline">— gatekeeper checked before a queued task is allowed to start</span></div>
+                <span class="fn-chev">▶</span>
+              </button>
+              <div class="fn-body">
+                <div class="fn-what">Confirms both a global worker slot is free and, for low-priority tasks, that the low-priority sub-limit isn't already saturated.</div>
+                <div class="fn-io">
+                  <div class="box in"><div class="lbl">In</div><div class="val">priority: WorkerPriority</div></div>
+                  <div class="box out"><div class="lbl">Out</div><div class="val">boolean (can start now?)</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p><span style="color:var(--text-muted)">Constants:</span>
+            <code>TASK_QUEUE_MAX_SIZE = 100</code> · <code>WORKER_QUEUE_MAX_WORKERS = 10</code> ·
+            <code>WORKER_QUEUE_MAX_LOW_PRIORITY_WORKERS = 5</code> · <code>PRIORITY_THRESHOLD_RECORDS = 5,000</code></p>
+        </section>
+
+        <!-- 03 RESUME -->
+        <section class="block" id="resume">
+          <div class="block-head">
+            <div class="block-eyebrow">03 — Reliability</div>
+            <h2 class="block-title">Resumable, checkpointed processing</h2>
+            <p class="block-dek">A crash or restart mid-task does not mean reprocessing the whole collection.</p>
+          </div>
+
+          <p>While streaming a source collection in batches of <strong>500</strong> documents, the processor
+            tracks how many records have been handled since the last checkpoint. Every <strong>1,000</strong>
+            processed records, it persists two things to the task's Mongo document: which action
+            <code>order</code> is currently running, and the <code>_id</code> of the last document written.</p>
+
+          <div class="timeline">
+            <div style="font-size:12px;font-weight:700;color:var(--text-mid);margin-bottom:4px;">Checkpoint &amp; recovery sequence</div>
+            <div class="timeline-track">
+              <div class="timeline-base"></div>
+              <div class="timeline-pt" style="left:2%">1</div><div class="timeline-lbl" style="left:2%">Batch 1<br>(500 docs)</div>
+              <div class="timeline-pt" style="left:26%">2</div><div class="timeline-lbl" style="left:26%">Batch 2</div>
+              <div class="timeline-pt wait" style="left:50%">!</div><div class="timeline-lbl" style="left:50%">1,000 processed<br>→ checkpoint written</div>
+              <div class="timeline-pt" style="left:74%">✕</div><div class="timeline-lbl" style="left:74%">Crash / restart</div>
+              <div class="timeline-pt" style="left:96%">↻</div><div class="timeline-lbl" style="left:96%">Resume past<br>lastProcessedId</div>
+            </div>
+          </div>
+
+          <div class="fn-grid">
+            <div class="fn-card">
+              <button class="fn-card-head">
+                <div class="fn-head-left"><span class="fn-name">_runTasks()</span><span class="fn-oneline">— the core batch loop that streams, scores, and checkpoints</span></div>
+                <span class="fn-chev">▶</span>
+              </button>
+              <div class="fn-body">
+                <div class="fn-what">Opens a cursor (resuming past <code>lastProcessedId</code> if this action order is being resumed), feeds every 500-doc batch to all active handlers, and checkpoints progress every 1,000 records.</div>
+                <div class="fn-io">
+                  <div class="box in"><div class="lbl">In</div><div class="val">tasks: string[], order, resumeState</div></div>
+                  <div class="box out"><div class="lbl">Out</div><div class="val">void — writes progress + bulk updates to Mongo</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 04 ANALYSIS -->
+        <section class="block" id="analysis">
+          <div class="block-head">
+            <div class="block-eyebrow">04 — Scoring</div>
+            <h2 class="block-title">Analysis pipeline</h2>
+            <p class="block-dek">Four handlers, one shared abstract base, one shared per-run context.</p>
+          </div>
+
+          <p>Every handler (<code>Embeddings</code>, <code>RiskScoring</code>, <code>AnomalyDetection</code>,
+            <code>OverallScoring</code>) extends an abstract <code>Analysis</code> base that standardizes
+            progress tracking, completion, and failure handling as its own trackable "content task action"
+            document.</p>
+
+          <h3 class="sub-title">SharedContext — passing data between stages without re-querying</h3>
+          <div class="swimlane">
+            <div class="lane">
+              <div class="lane-label">Embeddings stage</div>
+              <div class="lane-track">
+                <div class="lnode"><div class="t">Stream batch</div><div class="d">generate vector per doc</div></div>
+                <div class="lconn">→</div>
+                <div class="lnode accent"><div class="t">Accumulate centroid</div><div class="d">running avg per account</div></div>
+                <div class="lconn">→</div>
+                <div class="lnode"><div class="t">sharedContext.set()</div><div class="d">on complete()</div></div>
+              </div>
+            </div>
+            <div class="lane">
+              <div class="lane-label">AnomalyDetection stage</div>
+              <div class="lane-track">
+                <div class="lnode accent"><div class="t">sharedContext.get()</div><div class="d">reuse same-run centroids</div></div>
+                <div class="lconn">→</div>
+                <div class="lnode"><div class="t">Fallback: DB stream</div><div class="d">only if not in SharedContext</div></div>
+                <div class="lconn">→</div>
+                <div class="lnode"><div class="t">Compare entry vs centroid</div><div class="d">cosine similarity</div></div>
+              </div>
+            </div>
+          </div>
+
+          <h3 class="sub-title">Precompute once, score in memory</h3>
+          <p>Both <code>RiskScoring</code> and <code>AnomalyDetection</code> front-load their expensive
+            aggregations in <code>initialize()</code> — before any row scoring starts — so per-row rule
+            evaluation is pure in-memory lookup and math, never an additional DB round-trip.</p>
+
+          <p>Three precompute functions run once at the start of a task: <code>_buildAmountStats()</code> (per-GL-account mean/stdDev of amounts), <code>_buildPairingCounts()</code> (how often each account/counterparty pair occurs), and the windowed one below — each a single aggregation query, never repeated per row.</p>
+
+          <div class="fn-grid">
+            <div class="fn-card">
+              <button class="fn-card-head">
+                <div class="fn-head-left"><span class="fn-name">_buildWindowedFields()</span><span class="fn-oneline">— one aggregation computes velocity, threshold-proximity, and dormancy for every row</span></div>
+                <span class="fn-chev">▶</span>
+              </button>
+              <div class="fn-body">
+                <div class="fn-what">A single <code>$setWindowFields</code> aggregation computes, per document: how many entries the same user posted in a trailing 48h window, how many of those were near an approval threshold, and how many days since the same GL account was last touched.</div>
+                <div class="fn-io">
+                  <div class="box in"><div class="lbl">In</div><div class="val">(none — queries the collection directly)</div></div>
+                  <div class="box out"><div class="lbl">Out</div><div class="val">Map&lt;docId, {velocityCount48h, thresholdNearCount48h, daysSincePrevEntry, isFirstEntryForAccount}&gt;</div></div>
+                </div>
+                <button class="fn-code-toggle"><span class="cta-show">▸ show code</span><span class="cta-hide">▾ hide code</span></button>
+                <div class="fn-code-body">
+                  <div class="code-panel" style="margin:10px 0 0;">
+                    <div class="file-tab"><span class="path">analysis/src/risk-scoring/<b>index.ts</b></span></div>
+                    <pre><code>{
+  $setWindowFields: {
+    partitionBy: <span class="tok-str">"$postingBy"</span>,
+    sortBy: { postingDateNew: <span class="tok-num">1</span> },
+    output: {
+      velocityCount48h: { $count: {}, window: { range: [-<span class="tok-num">48</span>, <span class="tok-num">0</span>], unit: <span class="tok-str">"hour"</span> } },
+      thresholdNearCount48h: { $sum: <span class="tok-str">"$_inThresholdBand"</span>, window: { range: [-<span class="tok-num">48</span>, <span class="tok-num">0</span>], unit: <span class="tok-str">"hour"</span> } }
+    }
+  }
+}</code></pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="fn-card">
+              <button class="fn-card-head">
+                <div class="fn-head-left"><span class="fn-name">_aggregateScore()</span><span class="fn-oneline">— combines rule factors into one number, weighted by confidence</span></div>
+                <span class="fn-chev">▶</span>
+              </button>
+              <div class="fn-body">
+                <div class="fn-what">Combines all rule factors for one document into a single number, weighting each factor's contribution by its own confidence — so a rule that says "score 0.9 but confidence 0.1" barely moves the final result. Used identically by RiskScoring and AnomalyDetection.</div>
+                <div class="fn-io">
+                  <div class="box in"><div class="lbl">In</div><div class="val">factors: {score, confidence, weight}[]</div></div>
+                  <div class="box out"><div class="lbl">Out</div><div class="val">number 0–1</div></div>
+                </div>
+                <button class="fn-code-toggle"><span class="cta-show">▸ show code</span><span class="cta-hide">▾ hide code</span></button>
+                <div class="fn-code-body">
+                  <div class="code-panel" style="margin:10px 0 0;">
+                    <div class="file-tab"><span class="path">shared aggregation pattern</span></div>
+                    <pre><code><span class="tok-kw">const</span> effectiveWeight = factor.weight * factor.confidence;
+weightedSum += factor.score * effectiveWeight;
+totalWeight += effectiveWeight;
+<span class="tok-com">// score = totalWeight === 0 ? 0 : weightedSum / totalWeight</span></code></pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p><code>OverallScoring</code> runs last in the task order and simply averages the
+            <code>riskScoring.score</code> and <code>anomalyDetection.score</code> already written onto each
+            document into one <code>overallRiskScore</code>.</p>
+        </section>
+
+        <!-- 05 RULES -->
+        <section class="block" id="rules">
+          <div class="block-head">
+            <div class="block-eyebrow">05 — Extensibility</div>
+            <h2 class="block-title">Rules engine &amp; registry</h2>
+            <p class="block-dek">Rules are pure(-ish) functions, registered by key. Adding a new signal means
+              adding one file — no changes to the engine, processor, or scoring math.</p>
+          </div>
+
+          <p><code>RulesProcessor.process()</code> takes a batch of documents in, runs every configured rule concurrently (10 at a time) against each one, and returns <code>{'{'}_id, factors: RuleFactor[]{'}'}</code> per document — the factors that <code>_aggregateScore()</code> above then combines.</p>
+
+          <table class="rule-table">
+            <thead><tr><th>Family</th><th>Rule key</th><th>What it detects</th></tr></thead>
+            <tbody>
+              <tr><td><span class="fam-badge fam-risk">Risk</span></td><td class="key">largeValue</td><td>Statistical outlier vs. the GL account's historical amount distribution</td></tr>
+              <tr><td><span class="fam-badge fam-risk">Risk</span></td><td class="key">roundAmount</td><td>Suspiciously round numbers</td></tr>
+              <tr><td><span class="fam-badge fam-risk">Risk</span></td><td class="key">timingPattern</td><td>Weekend or after-hours postings</td></tr>
+              <tr><td><span class="fam-badge fam-risk">Risk</span></td><td class="key">velocityAnomaly</td><td>Unusual posting frequency by the same user in a trailing 48h window</td></tr>
+              <tr><td><span class="fam-badge fam-risk">Risk</span></td><td class="key">benfordsLawViolation</td><td>Leading-digit distribution anomaly (Benford's Law)</td></tr>
+              <tr><td><span class="fam-badge fam-risk">Risk</span></td><td class="key">thresholdAvoidance</td><td>Amounts clustering just under approval thresholds</td></tr>
+              <tr><td><span class="fam-badge fam-risk">Risk</span></td><td class="key">dormantAccountActivation</td><td>Sudden activity on a long-inactive account</td></tr>
+              <tr><td><span class="fam-badge fam-risk">Risk</span></td><td class="key">rareAccountPairing</td><td>Uncommon GL account / counterparty combination</td></tr>
+              <tr><td><span class="fam-badge fam-anomaly">Anomaly</span></td><td class="key">behavioralAnomaly</td><td>Entry's embedding vector diverges from its account/type centroid</td></tr>
+              <tr><td><span class="fam-badge fam-anomaly">Anomaly</span></td><td class="key">semanticAnomaly</td><td>Same idea, applied to a semantic (text-content) embedding</td></tr>
+            </tbody>
+          </table>
+
+          <h4 class="sub-sub">Example — Benford's Law rule</h4>
+          <p>"1" leads roughly 30% of naturally occurring amounts, "9" only ~4.6% — so an entry whose amount
+            starts with a large digit (7, 8, 9) gets a higher suspicion score, capped at a modest confidence
+            since it's a weak, population-level signal, not proof on its own.</p>
+          <div class="code-collapse">
+            <button class="code-toggle-btn"><span class="cta-show">▸ show code</span><span class="cta-hide">▾ hide code</span></button>
+            <div class="code-panel">
+              <div class="file-tab"><span class="path">rules/src/registry/risk-scoring/benfords-law/<b>index.ts</b></span></div>
+              <pre><code><span class="tok-com">// "1" leads ~30% of naturally occurring amounts, "9" only ~4.6% (Benford's Law)</span>
+evaluate = (row: <span class="tok-kw">any</span>): RuleResult =&gt; {
+    <span class="tok-kw">const</span> firstDigit = <span class="tok-kw">this</span>._firstSignificantDigit(Math.abs(row.amount ?? <span class="tok-num">0</span>));
+    <span class="tok-kw">let</span> score = firstDigit &gt;= <span class="tok-num">7</span> ? <span class="tok-num">0.6</span> + (firstDigit - <span class="tok-num">7</span>) * <span class="tok-num">0.1</span>   <span class="tok-com">// rarest → most suspicious</span>
+              : firstDigit &gt;= <span class="tok-num">5</span> ? <span class="tok-num">0.3</span> : <span class="tok-num">0.1</span>;
+    <span class="tok-kw">return</span> { score, confidence: <span class="tok-num">0.5</span> };  <span class="tok-com">// weak signal — confidence capped</span>
+};</code></pre>
+            </div>
+          </div>
+        </section>
+
+        <!-- 06 AI -->
+        <section class="block" id="ai">
+          <div class="block-head">
+            <div class="block-eyebrow">06 — Integration</div>
+            <h2 class="block-title">AI / embeddings integration</h2>
+            <p class="block-dek">A provider-agnostic AI layer, currently backed by AWS Bedrock, with per-model
+              adapters and token-aware batching. The rate/token math behind this is detailed in the
+              <strong>Algorithms</strong> tab.</p>
+          </div>
+
+          <div class="card-grid">
+            <div class="mini-card"><div class="t">Adapter pattern</div><div class="d">Each embedding model (Titan, Cohere) owns its own request-building and response-parsing — switching models never touches the calling code.</div></div>
+            <div class="mini-card"><div class="t">Centroid grouping</div><div class="d">Embeddings can accumulate a running average vector per GL account or counterparty, published to SharedContext for anomaly detection.</div></div>
+            <div class="mini-card"><div class="t">Usage tracking</div><div class="d">Token/record usage is upserted incrementally during processing — the billing trail for embedding spend.</div></div>
+            <div class="mini-card"><div class="t">Throttling-only retries</div><div class="d">Retries trigger only on 429 / ThrottlingException, exponential backoff 2s → 32s.</div></div>
+          </div>
+        </section>
+
+        <hr class="divider">
+
+        <section class="block" id="highlights">
+          <div class="block-head"><div class="block-eyebrow">07 — Why it matters</div><h2 class="block-title">Engineering highlights</h2></div>
+          <ul class="plain">
+            <li><strong>Resumable by construction</strong> — a crash or restart resumes from the last checkpoint, not from zero, on collections that can run into hundreds of thousands of rows.</li>
+            <li><strong>Fair scheduling</strong> — large jobs are capped to a subset of worker slots so they can never starve small, fast jobs behind them.</li>
+            <li><strong>Provider-safe by default</strong> — per-model RPS and TPM limiters mean growth in usage degrades into backpressure, not throttling errors or runaway cost.</li>
+            <li><strong>O(1) precompute, not O(n) queries</strong> — account stats, pairing counts, and windowed velocity metrics are computed once per task via aggregation pipelines.</li>
+            <li><strong>Registry-based extensibility</strong> — a new fraud signal is one new file in the rules registry.</li>
+            <li><strong>Full observability</strong> — every queue, batch, and token event is streamed live and logged (see the Observability tab).</li>
+          </ul>
+        </section>
+
+        <section class="block" id="hardening">
+          <div class="block-head"><div class="block-eyebrow">08 — In progress</div><h2 class="block-title">Known hardening items</h2></div>
+          <div class="callout warn">
+            <div class="cal-t">Confidence-scoring edge cases</div>
+            <p>Code review flagged a class of edge case across several rules: when a rule's required precomputed input is missing (e.g. no velocity data for a brand-new account), some early implementations reported a confident "no risk" (<code>confidence: 1</code>) rather than "unknown" (<code>confidence: 0</code>). The fix — treat missing precomputed data as low-confidence, not as evidence of safety — is being applied consistently across the registry. Active hardening on a working pipeline, not a design gap.</p>
+          </div>
+        </section>
+
+        <section class="block" id="reference">
+          <div class="block-head"><div class="block-eyebrow">09 — Appendix</div><h2 class="block-title">File reference</h2></div>
+          <table class="ref-table">
+            <tr><td>src/processor/tasks/</td><td>TasksProcessor, TaskQueue, batch/checkpoint logic</td></tr>
+            <tr><td>src/utilities/worker-queue/</td><td>Generic concurrency limiter</td></tr>
+            <tr><td>src/utilities/request-queue/</td><td>Generic bounded-concurrency runner</td></tr>
+            <tr><td>src/utilities/rate-limiter/</td><td>RateLimiter (RPS) &amp; TokenWindowLimiter (TPM)</td></tr>
+            <tr><td>src/processor/analysis/</td><td>Analysis base class, SharedContext, all four handlers</td></tr>
+            <tr><td>src/processor/analysis/rules/</td><td>RulesProcessor, RulesEngine, rule registry</td></tr>
+            <tr><td>src/integrations/src/ai/</td><td>AI provider abstraction, Bedrock client, embedding adapters</td></tr>
+            <tr><td>src/observability/ <em>(branch: test/je-testing)</em></td><td>Event bus, WS server, live dashboard</td></tr>
+          </table>
+          <div class="footer-note">Source: <code>data-processor</code> repository, branch <code>feature/je-testing</code> — diff against <code>main</code>.</div>
+        </section>
+
+      </div>
+
+      <!-- ================================================================= -->
+      <!-- TAB 2: OBSERVABILITY                                               -->
+      <!-- ================================================================= -->
+      <div class="tab-panel" id="panel-observability">
+
+        <header id="obs-overview">
+          <div class="doc-eyebrow">Observability</div>
+          <h1 class="doc-title">Watch the pipeline run, live</h1>
+          <p class="doc-dek">Every worker slot, queue depth, batch completion, and token spend is streamed in
+            real time and logged to disk. Nothing here is a mockup of a future plan — it's running code.</p>
+
+          <div class="callout info">
+            <div class="cal-t">How to see it right now</div>
+            <p>Switch to the <code>test/je-testing</code> branch and start the server, then open:</p>
+            <p style="font-family:ui-monospace,monospace;font-size:15px;color:var(--text);font-weight:700;">http://localhost:8000/dashboard</p>
+            <p>The dashboard connects over a WebSocket at <code>/observe</code> and starts rendering immediately — no configuration needed.</p>
+          </div>
+        </header>
+
+        <section class="block" id="obs-events">
+          <div class="block-head">
+            <div class="block-eyebrow">01 — Event model</div>
+            <h2 class="block-title">What gets tracked</h2>
+            <p class="block-dek">15 distinct event types cover the full lifecycle of a task, from queueing to
+              completion, plus system-level snapshots taken every 2 seconds.</p>
+          </div>
+
+          <table class="event-table">
+            <thead><tr><th>Event</th><th>Fired when</th><th>Carries</th></tr></thead>
+            <tbody>
+              <tr><td class="key">TASK_QUEUED</td><td>A task is added to TaskQueue</td><td>taskId, sourceKey, totalRecords, priority</td></tr>
+              <tr><td class="key">TASK_STARTED / COMPLETED / FAILED</td><td>Task begins / finishes / errors</td><td>taskId, durationMs, error</td></tr>
+              <tr><td class="key">ACTION_STARTED / COMPLETED</td><td>An analysis stage begins/finishes for a task</td><td>order, action, totalDocs, durationMs</td></tr>
+              <tr><td class="key">BATCH_COMPLETED</td><td>Every 500-doc batch finishes processing</td><td>batchIndex, docs, durationMs</td></tr>
+              <tr><td class="key">WORKER_FREED</td><td>A worker slot becomes available</td><td>running, free, queueDepth</td></tr>
+              <tr><td class="key">QUEUE_REFILLED</td><td>TaskQueue tops itself up from Mongo</td><td>added, queueDepth</td></tr>
+              <tr><td class="key">CENTROID_SOURCE / STREAM_COMPLETE</td><td>Anomaly detection resolves its centroids</td><td>source (sharedContext | db), counts, durationMs</td></tr>
+              <tr><td class="key">RATE_LIMITED</td><td>A Bedrock call has to wait on a limiter</td><td>taskId, action, waitMs</td></tr>
+              <tr><td class="key">TOKEN_ESTIMATE_CHECK</td><td>Estimated vs. actual token usage is compared</td><td>estimatedTokens, actualTokens, diffPct</td></tr>
+              <tr><td class="key">SYSTEM_SNAPSHOT</td><td>Every 2 seconds while a client is connected</td><td>full worker + queue state</td></tr>
+              <tr><td class="key">ERROR</td><td>Any unexpected failure</td><td>source, message, detail</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="block" id="obs-dashboard">
+          <div class="block-head">
+            <div class="block-eyebrow">02 — Live view</div>
+            <h2 class="block-title">Dashboard layout (representative)</h2>
+            <p class="block-dek">A sketch of what the real dashboard shows — header pills for headline numbers,
+              tabs for different views, and a live event log.</p>
+          </div>
+
+          <div class="dash-mock">
+            <div class="dm-header">
+              <div class="dm-brand"><span class="dm-dot"></span>SmartAudit Observer</div>
+              <div class="dm-pill"><span class="pl">workers</span><span class="pv">7 / 10</span></div>
+              <div class="dm-pill"><span class="pl">low-pri</span><span class="pv">2 / 5</span></div>
+              <div class="dm-pill"><span class="pl">queue</span><span class="pv">14</span></div>
+              <div class="dm-pill"><span class="pl">tokens/min</span><span class="pv">38.2k</span></div>
+            </div>
+            <div class="dm-tabs">
+              <div class="dm-tab on">Workers</div>
+              <div class="dm-tab">Queue</div>
+              <div class="dm-tab">Tasks</div>
+              <div class="dm-tab">Rate limits</div>
+              <div class="dm-tab">Event log</div>
+            </div>
+            <div class="dm-body">
+              <div class="dm-card">
+                <div class="ct">Worker slots</div>
+                <div class="dm-row"><span class="k">task_8f21 (high)</span><span class="v">00:42</span></div>
+                <div class="dm-row"><span class="k">task_7a10 (low)</span><span class="v">03:15</span></div>
+                <div class="dm-row"><span class="k">task_9c02 (high)</span><span class="v">00:08</span></div>
+                <div class="dm-row"><span class="k">free</span><span class="v">3 slots</span></div>
+              </div>
+              <div class="dm-card">
+                <div class="ct">Pending queue (by priority)</div>
+                <div class="dm-row"><span class="k">high priority</span><span class="v">9 tasks</span></div>
+                <div class="dm-row"><span class="k">low priority</span><span class="v">5 tasks</span></div>
+                <div class="dm-row"><span class="k">est. drain time</span><span class="v">~4m 20s</span></div>
+              </div>
+              <div class="dm-log">
+                <div><span class="tm">12:04:41</span> <span class="tag">BATCH_COMPLETED</span> task_8f21 batch #14 · 500 docs · 812ms</div>
+                <div><span class="tm">12:04:42</span> <span class="tag">TOKEN_ESTIMATE_CHECK</span> estimated 12,400 · actual 11,980 · diff -3.4%</div>
+                <div><span class="tm">12:04:44</span> <span class="tag">RATE_LIMITED</span> action=embeddings waitMs=420</div>
+                <div><span class="tm">12:04:46</span> <span class="tag">WORKER_FREED</span> running=6 free=4 queueDepth=13</div>
+                <div><span class="tm">12:04:47</span> <span class="tag">QUEUE_REFILLED</span> added=4 queueDepth=17</div>
+              </div>
+            </div>
+          </div>
+          <p style="font-size:12px;color:var(--text-muted);">Illustrative values above — connect to <code>localhost:8000/dashboard</code> on <code>test/je-testing</code> for the real, live numbers.</p>
+        </section>
+
+        <section class="block" id="obs-pipeline">
+          <div class="block-head">
+            <div class="block-eyebrow">03 — Data path</div>
+            <h2 class="block-title">From an emitted event to a pixel on screen</h2>
+          </div>
+
+          <div class="swimlane">
+            <div class="lane">
+              <div class="lane-label">Any component</div>
+              <div class="lane-track">
+                <div class="lnode accent"><div class="t">EventBus.publish()</div><div class="d">e.g. TaskQueue, WorkerQueue, Bedrock client</div></div>
+              </div>
+            </div>
+            <div class="lane">
+              <div class="lane-label">EventBus</div>
+              <div class="lane-track">
+                <div class="lnode"><div class="t">Stamp timestamp</div><div class="d">envelope = {...event, ts}</div></div>
+                <div class="lconn">→</div>
+                <div class="lnode"><div class="t">Push to ring buffer</div><div class="d">last 500 events</div></div>
+                <div class="lconn">→</div>
+                <div class="lnode accent"><div class="t">emit("event")</div><div class="d">to all listeners</div></div>
+              </div>
+            </div>
+            <div class="lane">
+              <div class="lane-label">WS server</div>
+              <div class="lane-track">
+                <div class="lnode"><div class="t">Write to NDJSON log</div><div class="d">logs/observability-YYYY-MM-DD.ndjson</div></div>
+                <div class="lconn">→</div>
+                <div class="lnode accent"><div class="t">Forward to every open socket</div><div class="d">/observe</div></div>
+              </div>
+            </div>
+            <div class="lane">
+              <div class="lane-label">Dashboard (browser)</div>
+              <div class="lane-track">
+                <div class="lnode"><div class="t">On connect: replay buffer</div><div class="d">instant history, not blank screen</div></div>
+                <div class="lconn">→</div>
+                <div class="lnode"><div class="t">Render live</div><div class="d">pills, tabs, event log update in place</div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="block" id="obs-persist">
+          <div class="block-head">
+            <div class="block-eyebrow">04 — Durability</div>
+            <h2 class="block-title">Replay buffer &amp; NDJSON log</h2>
+          </div>
+          <div class="card-grid">
+            <div class="mini-card"><div class="t">In-memory replay buffer</div><div class="d">Last 500 events kept in the EventBus. A dashboard opened mid-run sees recent history immediately instead of a blank screen.</div></div>
+            <div class="mini-card"><div class="t">Daily NDJSON file</div><div class="d">Every event is also appended to <code>logs/observability-&lt;date&gt;.ndjson</code> — one JSON object per line, so any run can be replayed or analyzed after the fact.</div></div>
+            <div class="mini-card"><div class="t">Periodic snapshot</div><div class="d">Every 2 seconds while at least one dashboard is connected, a full system snapshot (worker/queue state) is published — keeps the view live even during quiet periods.</div></div>
+            <div class="mini-card"><div class="t">Zero configuration</div><div class="d">The WS server attaches directly to the existing HTTP server on boot — no separate service to run or deploy.</div></div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- ================================================================= -->
+      <!-- TAB 3: ALGORITHMS                                                  -->
+      <!-- ================================================================= -->
+      <div class="tab-panel" id="panel-algorithms">
+
+        <header id="alg-overview">
+          <div class="doc-eyebrow">Algorithms</div>
+          <h1 class="doc-title">The math behind never tripping a provider's rate limits</h1>
+          <p class="doc-dek">Two independent limiter types run per Bedrock model — one bounding request rate,
+            one bounding token throughput — plus a deliberately pessimistic token estimator that stands in for
+            a real tokenizer we don't have offline.</p>
+        </header>
+
+        <section class="block" id="alg-rps">
+          <div class="block-head">
+            <div class="block-eyebrow">01 — Request pacing</div>
+            <h2 class="block-title">RateLimiter — sliding 1-second window</h2>
+            <p class="block-dek">Caps how many requests can go out per second, and optionally enforces even
+              spacing between them.</p>
+          </div>
+
+          <p><strong>Algorithm:</strong> keep a list of timestamps for every request sent in the last 1,000ms.
+            Before sending a new one, drop any timestamp older than 1 second ("evict"), then check if the
+            remaining count is still under the cap.</p>
+
+          <ol class="plain">
+            <li>Evict timestamps older than <code>now - 1000ms</code> from the tracking list.</li>
+            <li>If fewer than <code>maxPerSecond</code> timestamps remain, record <code>now</code> and proceed immediately.</li>
+            <li>Otherwise, compute how long until the oldest timestamp exits the window (<code>oldest + 1000ms - now</code>) and wait that long before retrying.</li>
+            <li>If <code>minIntervalMs</code> is set, also enforce a minimum gap since the last acquired call — even spacing, so requests aren't all bursted to the front of the window.</li>
+          </ol>
+
+          <div class="timeline">
+            <div style="font-size:12px;font-weight:700;color:var(--text-mid);margin-bottom:4px;">A 1-second sliding window, maxPerSecond = 5</div>
+            <div class="timeline-track">
+              <div class="timeline-window" style="left:8%;width:55%;"></div>
+              <div class="timeline-pt" style="left:10%;font-size:9px;">1</div>
+              <div class="timeline-pt" style="left:20%;font-size:9px;">2</div>
+              <div class="timeline-pt" style="left:32%;font-size:9px;">3</div>
+              <div class="timeline-pt" style="left:44%;font-size:9px;">4</div>
+              <div class="timeline-pt" style="left:56%;font-size:9px;">5</div>
+              <div class="timeline-pt wait" style="left:70%">!</div><div class="timeline-lbl" style="left:70%">6th call waits<br>until slot #1 expires</div>
+            </div>
+          </div>
+
+          <p><strong>Why the minimum spacing matters:</strong> a naive sliding window lets all N requests fire
+            in the first few milliseconds of a fresh window, then go silent — a burst pattern that trips
+            provider-side burst protection even when the nominal RPS is respected. Enforcing a minimum interval
+            (e.g. ~33ms for 30 RPS) spreads calls evenly across the whole second instead.</p>
+        </section>
+
+        <section class="block" id="alg-tpm">
+          <div class="block-head">
+            <div class="block-eyebrow">02 — Throughput pacing</div>
+            <h2 class="block-title">TokenWindowLimiter — sliding token-budget window</h2>
+            <p class="block-dek">Same sliding-window idea as RateLimiter, but the unit being budgeted is tokens
+              consumed, not requests sent — matching how providers actually meter LLM/embedding usage (TPM
+              quotas).</p>
+          </div>
+
+          <ol class="plain">
+            <li>Evict any window entries older than <code>windowMs</code> (default 60s), subtracting their token counts from the running total.</li>
+            <li>If the requested token count fits under the remaining budget, record it and proceed.</li>
+            <li>If a single request is larger than the <em>entire</em> window budget, it can never "fit" under the normal rule — so it's let through alone, once the window is completely drained (<code>usedInWindow === 0</code>), instead of deadlocking forever.</li>
+            <li>Otherwise wait until the oldest entry expires and re-check.</li>
+          </ol>
+
+          <div class="branch-diagram">
+            <div class="branch-root"><div class="node">acquire(tokens) called</div></div>
+            <div class="branch-lines"><svg width="360" height="34" viewBox="0 0 360 34"><path d="M180 0 L180 12 M180 12 L40 12 L40 34 M180 12 L320 12 L320 34" stroke="var(--border-strong)" stroke-width="2" fill="none"/></svg></div>
+            <div class="branch-row">
+              <div class="branch-card"><div class="cond">tokens ≤ maxTokensPerWindow</div><div class="res">Normal path: proceed once <code>usedInWindow + tokens ≤ max</code></div></div>
+              <div class="branch-card"><div class="cond">tokens &gt; maxTokensPerWindow</div><div class="res">Oversized request: proceed only once the window is fully drained (<code>usedInWindow === 0</code>), then let it through alone</div></div>
+            </div>
+          </div>
+
+          <div class="code-collapse">
+            <button class="code-toggle-btn"><span class="cta-show">▸ show code</span><span class="cta-hide">▾ hide code</span></button>
+            <div class="code-panel">
+              <div class="file-tab"><span class="path">utilities/rate-limiter/token-window/<b>index.ts</b></span></div>
+              <pre><code><span class="tok-com">// A single request larger than the whole window budget can never "fit" normally;</span>
+<span class="tok-com">// let it through alone once the window is fully drained instead of deadlocking.</span>
+<span class="tok-kw">const</span> canProceed = fitsWithinWindowCap
+    ? <span class="tok-kw">this</span>._usedInWindow + tokens &lt;= <span class="tok-kw">this</span>._maxTokensPerWindow
+    : <span class="tok-kw">this</span>._usedInWindow === <span class="tok-num">0</span>;</code></pre>
+            </div>
+          </div>
+
+          <p>Each Bedrock model gets its <strong>own</strong> <code>{'{'}rate, token{'}'}</code> limiter pair,
+            sized to that model's confirmed quota (<code>maxRPS</code>, <code>tpmLimit × tpmSafetyMargin</code>).
+            A model without a confirmed quota falls back to a conservative shared pace (10 RPS, 90k
+            tokens/minute) rather than silently borrowing another model's numbers.</p>
+        </section>
+
+        <section class="block" id="alg-estimate">
+          <div class="block-head">
+            <div class="block-eyebrow">03 — Estimation</div>
+            <h2 class="block-title">Token estimation — dual estimate, take the max</h2>
+            <p class="block-dek">There's no maintained offline tokenizer for Cohere models — their own SDK only
+              tokenizes via a network call, which would defeat the point of a pre-flight check. So the estimate
+              is deliberately biased upward using two independent heuristics.</p>
+          </div>
+
+          <div class="branch-diagram">
+            <div class="branch-root"><div class="node">estimateTokenCount(text)</div></div>
+            <div class="branch-lines"><svg width="360" height="34" viewBox="0 0 360 34"><path d="M180 0 L180 12 M180 12 L40 12 L40 34 M180 12 L320 12 L320 34" stroke="var(--border-strong)" stroke-width="2" fill="none"/></svg></div>
+            <div class="branch-row">
+              <div class="branch-card"><div class="cond">char-based estimate</div><div class="res">text.length ÷ 3.3 chars/token</div></div>
+              <div class="branch-card"><div class="cond">word-based estimate</div><div class="res">wordCount × 1.4 tokens/word</div></div>
+            </div>
+            <div class="branch-lines" style="margin-top:8px;"><svg width="360" height="34" viewBox="0 0 360 34"><path d="M40 0 L40 12 L180 12 M320 0 L320 12 L180 12 M180 12 L180 34" stroke="var(--border-strong)" stroke-width="2" fill="none"/></svg></div>
+            <div class="branch-root"><div class="node" style="background:var(--brand-soft);border-color:var(--brand-line);color:var(--brand-strong);">Math.max(both, 1) → final estimate</div></div>
+          </div>
+
+          <p>Real BPE tokenizers average ~4 chars/token and ~0.75 tokens/word for English text. This estimator
+            deliberately uses a <em>smaller</em> chars-per-token divisor (3.3) and a <em>larger</em>
+            tokens-per-word multiplier (1.4) than reality — both biasing the result upward — then takes
+            whichever estimate is bigger. That keeps the estimate safe for dense text like code or IDs (where
+            char-based estimation would under-count) and safe for prose (where word-based estimation would
+            under-count), at the cost of somewhat over-reserving token budget.</p>
+
+          <div class="code-collapse">
+            <button class="code-toggle-btn"><span class="cta-show">▸ show code</span><span class="cta-hide">▾ hide code</span></button>
+            <div class="code-panel">
+              <div class="file-tab"><span class="path">bedrock/src/utils/tokens/<b>index.ts</b></span></div>
+              <pre><code><span class="tok-kw">const</span> MIN_CHARS_PER_TOKEN = <span class="tok-num">3.3</span>;
+<span class="tok-kw">const</span> MIN_TOKENS_PER_WORD = <span class="tok-num">1.4</span>;
+
+<span class="tok-kw">function</span> estimateTokenCount(text: <span class="tok-kw">string</span>): <span class="tok-kw">number</span> {
+    <span class="tok-kw">const</span> charBasedEstimate = Math.ceil(text.length / MIN_CHARS_PER_TOKEN);
+    <span class="tok-kw">const</span> wordBasedEstimate = Math.ceil(wordCount * MIN_TOKENS_PER_WORD);
+    <span class="tok-kw">return</span> Math.max(charBasedEstimate, wordBasedEstimate, <span class="tok-num">1</span>);
+}</code></pre>
+            </div>
+          </div>
+
+          <div class="callout">
+            <div class="cal-t">Closing the loop: TOKEN_ESTIMATE_CHECK</div>
+            <p>Bedrock returns the <em>actual</em> input token count in response headers. The system compares
+              that against the pre-flight estimate and emits a <code>TOKEN_ESTIMATE_CHECK</code> observability
+              event with the percentage difference — visible live on the dashboard — so estimator accuracy is
+              measured against real traffic, not assumed.</p>
+          </div>
+        </section>
+
+        <section class="block" id="alg-batching">
+          <div class="block-head">
+            <div class="block-eyebrow">04 — Packing</div>
+            <h2 class="block-title">Token-aware batching</h2>
+            <p class="block-dek">Greedily packs texts into the fewest requests possible, bounded by both a
+              max item count and a max estimated-token budget per request.</p>
+          </div>
+
+          <p><strong>Algorithm (greedy bin-packing, single pass):</strong> walk the list of texts in order,
+            accumulating them into the current batch. Flush (close out) the current batch and start a new one
+            whenever adding the next text would either exceed the model's max item count or push the running
+            token estimate over the per-batch token cap.</p>
+
+          <div class="swimlane">
+            <div class="lane">
+              <div class="lane-label">For each text</div>
+              <div class="lane-track">
+                <div class="lnode"><div class="t">Estimate tokens</div><div class="d">estimateTokenCount(text)</div></div>
+                <div class="lconn">→</div>
+                <div class="lnode"><div class="t">Would batch overflow?</div><div class="d">count or token cap</div></div>
+                <div class="lconn">→</div>
+                <div class="lnode accent"><div class="t">Flush current, start new</div><div class="d">only if overflow</div></div>
+                <div class="lconn">→</div>
+                <div class="lnode"><div class="t">Append to batch</div><div class="d">always happens</div></div>
+              </div>
+            </div>
+          </div>
+
+          <p>This keeps any single <code>InvokeModelCommand</code> from consuming a large fraction of the
+            model's TPM quota in one call — many small, paced batches instead of one large one that could blow
+            the whole minute's budget at once.</p>
+        </section>
+
+        <section class="block" id="alg-retry">
+          <div class="block-head">
+            <div class="block-eyebrow">05 — Failure handling</div>
+            <h2 class="block-title">Retry &amp; exponential backoff</h2>
+            <p class="block-dek">Retries only on throttling responses — anything else fails fast.</p>
+          </div>
+
+          <div class="timeline">
+            <div style="font-size:12px;font-weight:700;color:var(--text-mid);margin-bottom:4px;">Backoff schedule (base 2s, doubling, 5 retries)</div>
+            <div class="timeline-track">
+              <div class="timeline-pt" style="left:2%">0</div><div class="timeline-lbl" style="left:2%">Attempt<br>(t=0)</div>
+              <div class="timeline-pt wait" style="left:20%">1</div><div class="timeline-lbl" style="left:20%">wait 2s</div>
+              <div class="timeline-pt wait" style="left:38%">2</div><div class="timeline-lbl" style="left:38%">wait 4s</div>
+              <div class="timeline-pt wait" style="left:56%">3</div><div class="timeline-lbl" style="left:56%">wait 8s</div>
+              <div class="timeline-pt wait" style="left:74%">4</div><div class="timeline-lbl" style="left:74%">wait 16s</div>
+              <div class="timeline-pt wait" style="left:92%">5</div><div class="timeline-lbl" style="left:92%">wait 32s<br>(final)</div>
+            </div>
+          </div>
+
+          <ul class="plain">
+            <li><strong>Only retries on throttling</strong> — HTTP 429, <code>ThrottlingException</code>, or <code>TooManyRequestsException</code>. Any other error (validation, auth, malformed request) fails immediately since retrying won't help.</li>
+            <li><strong>Re-acquires the rate limiter on every attempt</strong> — including retries — so a retry storm still respects the same RPS pacing as fresh calls.</li>
+            <li><strong>30-second hard timeout</strong> per <code>InvokeModelCommand</code> so one stalled call can't hang an entire batch indefinitely.</li>
+          </ul>
+        </section>
+
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+(function () {
+  // ── Tab switching ──
+  var tabBtns = Array.prototype.slice.call(document.querySelectorAll('.tab-btn'));
+  var panels = {
+    arch: document.getElementById('panel-arch'),
+    observability: document.getElementById('panel-observability'),
+    algorithms: document.getElementById('panel-algorithms')
+  };
+  var navGroups = Array.prototype.slice.call(document.querySelectorAll('[data-nav-for]'));
+
+  function activateTab(name) {
+    tabBtns.forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-tab') === name); });
+    Object.keys(panels).forEach(function (k) { panels[k].classList.toggle('active', k === name); });
+    navGroups.forEach(function (g) { g.style.display = (g.getAttribute('data-nav-for') === name) ? '' : 'none'; });
+    updateActiveLink();
+  }
+
+  tabBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () { activateTab(btn.getAttribute('data-tab')); });
+  });
+
+  // ── Scroll-spy within the active tab ──
+  function updateActiveLink() {
+    var activeGroup = navGroups.filter(function (g) { return g.style.display !== 'none'; })[0];
+    if (!activeGroup) return;
+    var links = Array.prototype.slice.call(activeGroup.querySelectorAll('.nav-link'));
+    var sections = links.map(function (l) { return document.getElementById(l.getAttribute('href').slice(1)); });
+    var pos = window.scrollY + 120;
+    var activeIdx = 0;
+    for (var i = 0; i < sections.length; i++) {
+      if (sections[i] && sections[i].offsetTop <= pos) activeIdx = i;
+    }
+    links.forEach(function (l, i) { l.classList.toggle('active', i === activeIdx); });
+  }
+
+  window.addEventListener('scroll', updateActiveLink, { passive: true });
+  updateActiveLink();
+
+  // ── Function card collapse/expand ──
+  Array.prototype.slice.call(document.querySelectorAll('.fn-card-head')).forEach(function (head) {
+    head.addEventListener('click', function () {
+      head.closest('.fn-card').classList.toggle('open');
+    });
+  });
+  Array.prototype.slice.call(document.querySelectorAll('.fn-code-toggle')).forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      btn.closest('.fn-card').classList.toggle('code-open');
+    });
+  });
+  Array.prototype.slice.call(document.querySelectorAll('.code-toggle-btn')).forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      btn.closest('.code-collapse').classList.toggle('open');
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
