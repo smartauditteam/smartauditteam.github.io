@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>data-processor — Architecture Overview</title>
+<title>data-processor: Architecture Overview</title>
 <style>
 
 /* ============================= RESET ============================= */
@@ -226,7 +226,7 @@ ol.plain li::before { content: counter(step); counter-increment: step; font-fami
 .branch-card .cond { font-family: ui-monospace, monospace; font-size: 10.5px; color: var(--brand-strong); background: var(--brand-soft); display: inline-block; padding: 2px 7px; border-radius: 4px; margin-bottom: 6px; }
 .branch-card .res { font-size: 12px; color: var(--text-mid); line-height: 1.5; }
 
-/* Function cards — collapsed by default, click to reveal detail + code */
+/* Function cards, collapsed by default: click to reveal detail and code */
 .fn-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 18px 0 24px; }
 .fn-card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); overflow: hidden; }
 .fn-card-head {
@@ -410,7 +410,7 @@ ol.plain li::before { content: counter(step); counter-increment: step; font-fami
           <p class="doc-dek">
             <code>data-processor</code> ingests uploaded general-ledger data, generates AI embeddings for every
             entry, runs a pluggable rules engine over them to produce risk and anomaly scores, and does all of
-            it through a priority-aware, checkpointed task queue — so it survives crashes, doesn't starve small
+            it through a priority-aware, checkpointed task queue, so it survives crashes, doesn't starve small
             jobs behind large ones, and never overruns a model provider's rate limits.
           </p>
           <div class="stat-row">
@@ -424,7 +424,7 @@ ol.plain li::before { content: counter(step); counter-increment: step; font-fami
         <!-- 01 FLOW -->
         <section class="block" id="flow">
           <div class="block-head">
-            <div class="block-eyebrow">01 — Pipeline</div>
+            <div class="block-eyebrow">01: Pipeline</div>
             <h2 class="block-title">End-to-end flow</h2>
             <p class="block-dek">One "content task" runs a sequence of analysis actions in order, streaming the
               underlying collection in batches rather than loading it into memory.</p>
@@ -447,7 +447,7 @@ ol.plain li::before { content: counter(step); counter-increment: step; font-fami
           </div>
 
           <h3 class="sub-title">Who does what, in what order</h3>
-          <p>A swimlane view of the same flow — each row is a distinct actor, each node is a discrete step it
+          <p>A swimlane view of the same flow: each row is a distinct actor, each node is a discrete step it
             performs before handing off to the next lane.</p>
 
           <div class="swimlane">
@@ -496,23 +496,23 @@ ol.plain li::before { content: counter(step); counter-increment: step; font-fami
           </div>
 
           <p>Stages that share an <code>order</code> run together against the same batch of documents, and their
-            per-document writes are merged into a single <code>bulkWrite</code> — a document touched by three
+            per-document writes are merged into a single <code>bulkWrite</code>: a document touched by three
             analyses in the same pass still gets one update, not three.</p>
         </section>
 
         <!-- 02 QUEUE -->
         <section class="block" id="queue">
           <div class="block-head">
-            <div class="block-eyebrow">02 — Concurrency</div>
+            <div class="block-eyebrow">02: Concurrency</div>
             <h2 class="block-title">Task queue &amp; concurrency control</h2>
             <p class="block-dek">Three layered primitives, each generic enough to reuse outside this pipeline.</p>
           </div>
 
           <div class="card-grid">
             <div class="mini-card"><div class="t">TaskQueue</div><div class="d">Singleton job queue. Loads queued/in-progress tasks from Mongo on boot, refills itself as workers free up, caches source config per <code>sourceKey</code>.</div></div>
-            <div class="mini-card"><div class="t">WorkerQueue</div><div class="d">Generic N-concurrent-worker limiter with an optional global rate cap and an <code>onComplete</code> hook — not specific to GL processing.</div></div>
+            <div class="mini-card"><div class="t">WorkerQueue</div><div class="d">Generic N-concurrent-worker limiter with an optional global rate cap and an <code>onComplete</code> hook, not specific to GL processing.</div></div>
             <div class="mini-card"><div class="t">RequestQueue</div><div class="d">Bounded-concurrency runner for a list of async items (default chunk size 4). Used inside the rules engine and the Bedrock client alike.</div></div>
-            <div class="mini-card"><div class="t">Priority split</div><div class="d">Jobs ≥ 5,000 records are "low" priority, capped at 5 of the 10 total worker slots — a handful of large jobs can never occupy every worker.</div></div>
+            <div class="mini-card"><div class="t">Priority split</div><div class="d">Jobs ≥ 5,000 records are "low" priority, capped at 5 of the 10 total worker slots, so a handful of large jobs can never occupy every worker.</div></div>
           </div>
 
           <h3 class="sub-title">How a job is admitted (decision diagram)</h3>
@@ -533,11 +533,11 @@ ol.plain li::before { content: counter(step); counter-increment: step; font-fami
             </div>
           </div>
 
-          <h4 class="sub-sub">How admission is decided — click to expand</h4>
+          <h4 class="sub-sub">How admission is decided: click to expand</h4>
           <div class="fn-grid">
             <div class="fn-card">
               <button class="fn-card-head">
-                <div class="fn-head-left"><span class="fn-name">_getPriority()</span><span class="fn-oneline">— routes a task to the low or high priority lane based on record count</span></div>
+                <div class="fn-head-left"><span class="fn-name">_getPriority()</span><span class="fn-oneline">Routes a task to the low or high priority lane based on record count</span></div>
                 <span class="fn-chev">▶</span>
               </button>
               <div class="fn-body">
@@ -559,7 +559,7 @@ ol.plain li::before { content: counter(step); counter-increment: step; font-fami
             </div>
             <div class="fn-card">
               <button class="fn-card-head">
-                <div class="fn-head-left"><span class="fn-name">_canAccept()</span><span class="fn-oneline">— gatekeeper checked before a queued task is allowed to start</span></div>
+                <div class="fn-head-left"><span class="fn-name">_canAccept()</span><span class="fn-oneline">Gatekeeper checked before a queued task is allowed to start</span></div>
                 <span class="fn-chev">▶</span>
               </button>
               <div class="fn-body">
@@ -580,7 +580,7 @@ ol.plain li::before { content: counter(step); counter-increment: step; font-fami
         <!-- 03 RESUME -->
         <section class="block" id="resume">
           <div class="block-head">
-            <div class="block-eyebrow">03 — Reliability</div>
+            <div class="block-eyebrow">03: Reliability</div>
             <h2 class="block-title">Resumable, checkpointed processing</h2>
             <p class="block-dek">A crash or restart mid-task does not mean reprocessing the whole collection.</p>
           </div>
@@ -605,14 +605,14 @@ ol.plain li::before { content: counter(step); counter-increment: step; font-fami
           <div class="fn-grid">
             <div class="fn-card">
               <button class="fn-card-head">
-                <div class="fn-head-left"><span class="fn-name">_runTasks()</span><span class="fn-oneline">— the core batch loop that streams, scores, and checkpoints</span></div>
+                <div class="fn-head-left"><span class="fn-name">_runTasks()</span><span class="fn-oneline">The core batch loop that streams, scores, and checkpoints</span></div>
                 <span class="fn-chev">▶</span>
               </button>
               <div class="fn-body">
                 <div class="fn-what">Opens a cursor (resuming past <code>lastProcessedId</code> if this action order is being resumed), feeds every 500-doc batch to all active handlers, and checkpoints progress every 1,000 records.</div>
                 <div class="fn-io">
                   <div class="box in"><div class="lbl">In</div><div class="val">tasks: string[], order, resumeState</div></div>
-                  <div class="box out"><div class="lbl">Out</div><div class="val">void — writes progress + bulk updates to Mongo</div></div>
+                  <div class="box out"><div class="lbl">Out</div><div class="val">void: writes progress + bulk updates to Mongo</div></div>
                 </div>
               </div>
             </div>
@@ -622,7 +622,7 @@ ol.plain li::before { content: counter(step); counter-increment: step; font-fami
         <!-- 04 ANALYSIS -->
         <section class="block" id="analysis">
           <div class="block-head">
-            <div class="block-eyebrow">04 — Scoring</div>
+            <div class="block-eyebrow">04: Scoring</div>
             <h2 class="block-title">Analysis pipeline</h2>
             <p class="block-dek">Four handlers, one shared abstract base, one shared per-run context.</p>
           </div>
@@ -632,7 +632,7 @@ ol.plain li::before { content: counter(step); counter-increment: step; font-fami
             progress tracking, completion, and failure handling as its own trackable "content task action"
             document.</p>
 
-          <h3 class="sub-title">SharedContext — passing data between stages without re-querying</h3>
+          <h3 class="sub-title">SharedContext: passing data between stages without re-querying</h3>
           <div class="swimlane">
             <div class="lane">
               <div class="lane-label">Embeddings stage</div>
@@ -658,21 +658,21 @@ ol.plain li::before { content: counter(step); counter-increment: step; font-fami
 
           <h3 class="sub-title">Precompute once, score in memory</h3>
           <p>Both <code>RiskScoring</code> and <code>AnomalyDetection</code> front-load their expensive
-            aggregations in <code>initialize()</code> — before any row scoring starts — so per-row rule
+            aggregations in <code>initialize()</code>, before any row scoring starts, so per-row rule
             evaluation is pure in-memory lookup and math, never an additional DB round-trip.</p>
 
-          <p>Three precompute functions run once at the start of a task: <code>_buildAmountStats()</code> (per-GL-account mean/stdDev of amounts), <code>_buildPairingCounts()</code> (how often each account/counterparty pair occurs), and the windowed one below — each a single aggregation query, never repeated per row.</p>
+          <p>Three precompute functions run once at the start of a task: <code>_buildAmountStats()</code> (per-GL-account mean/stdDev of amounts), <code>_buildPairingCounts()</code> (how often each account/counterparty pair occurs), and the windowed one below, each a single aggregation query, never repeated per row.</p>
 
           <div class="fn-grid">
             <div class="fn-card">
               <button class="fn-card-head">
-                <div class="fn-head-left"><span class="fn-name">_buildWindowedFields()</span><span class="fn-oneline">— one aggregation computes velocity, threshold-proximity, and dormancy for every row</span></div>
+                <div class="fn-head-left"><span class="fn-name">_buildWindowedFields()</span><span class="fn-oneline">One aggregation computes velocity, threshold-proximity, and dormancy for every row</span></div>
                 <span class="fn-chev">▶</span>
               </button>
               <div class="fn-body">
                 <div class="fn-what">A single <code>$setWindowFields</code> aggregation computes, per document: how many entries the same user posted in a trailing 48h window, how many of those were near an approval threshold, and how many days since the same GL account was last touched.</div>
                 <div class="fn-io">
-                  <div class="box in"><div class="lbl">In</div><div class="val">(none — queries the collection directly)</div></div>
+                  <div class="box in"><div class="lbl">In</div><div class="val">(none: queries the collection directly)</div></div>
                   <div class="box out"><div class="lbl">Out</div><div class="val">Map&lt;docId, {velocityCount48h, thresholdNearCount48h, daysSincePrevEntry, isFirstEntryForAccount}&gt;</div></div>
                 </div>
                 <button class="fn-code-toggle"><span class="cta-show">▸ show code</span><span class="cta-hide">▾ hide code</span></button>
@@ -695,11 +695,11 @@ ol.plain li::before { content: counter(step); counter-increment: step; font-fami
             </div>
             <div class="fn-card">
               <button class="fn-card-head">
-                <div class="fn-head-left"><span class="fn-name">_aggregateScore()</span><span class="fn-oneline">— combines rule factors into one number, weighted by confidence</span></div>
+                <div class="fn-head-left"><span class="fn-name">_aggregateScore()</span><span class="fn-oneline">Combines rule factors into one number, weighted by confidence</span></div>
                 <span class="fn-chev">▶</span>
               </button>
               <div class="fn-body">
-                <div class="fn-what">Combines all rule factors for one document into a single number, weighting each factor's contribution by its own confidence — so a rule that says "score 0.9 but confidence 0.1" barely moves the final result. Used identically by RiskScoring and AnomalyDetection.</div>
+                <div class="fn-what">Combines all rule factors for one document into a single number, weighting each factor's contribution by its own confidence, so a rule that says "score 0.9 but confidence 0.1" barely moves the final result. Used identically by RiskScoring and AnomalyDetection.</div>
                 <div class="fn-io">
                   <div class="box in"><div class="lbl">In</div><div class="val">factors: {score, confidence, weight}[]</div></div>
                   <div class="box out"><div class="lbl">Out</div><div class="val">number 0–1</div></div>
@@ -726,13 +726,13 @@ totalWeight += effectiveWeight;
         <!-- 05 RULES -->
         <section class="block" id="rules">
           <div class="block-head">
-            <div class="block-eyebrow">05 — Extensibility</div>
+            <div class="block-eyebrow">05: Extensibility</div>
             <h2 class="block-title">Rules engine &amp; registry</h2>
             <p class="block-dek">Rules are pure(-ish) functions, registered by key. Adding a new signal means
-              adding one file — no changes to the engine, processor, or scoring math.</p>
+              adding one file, with no changes to the engine, processor, or scoring math.</p>
           </div>
 
-          <p><code>RulesProcessor.process()</code> takes a batch of documents in, runs every configured rule concurrently (10 at a time) against each one, and returns <code>{'{'}_id, factors: RuleFactor[]{'}'}</code> per document — the factors that <code>_aggregateScore()</code> above then combines.</p>
+          <p><code>RulesProcessor.process()</code> takes a batch of documents in, runs every configured rule concurrently (10 at a time) against each one, and returns <code>{'{'}_id, factors: RuleFactor[]{'}'}</code> per document: the factors that <code>_aggregateScore()</code> above then combines.</p>
 
           <table class="rule-table">
             <thead><tr><th>Family</th><th>Rule key</th><th>What it detects</th></tr></thead>
@@ -750,8 +750,8 @@ totalWeight += effectiveWeight;
             </tbody>
           </table>
 
-          <h4 class="sub-sub">Example — Benford's Law rule</h4>
-          <p>"1" leads roughly 30% of naturally occurring amounts, "9" only ~4.6% — so an entry whose amount
+          <h4 class="sub-sub">Example: Benford's Law rule</h4>
+          <p>"1" leads roughly 30% of naturally occurring amounts, "9" only ~4.6%, so an entry whose amount
             starts with a large digit (7, 8, 9) gets a higher suspicion score, capped at a modest confidence
             since it's a weak, population-level signal, not proof on its own.</p>
           <div class="code-collapse">
@@ -772,7 +772,7 @@ evaluate = (row: <span class="tok-kw">any</span>): RuleResult =&gt; {
         <!-- 06 AI -->
         <section class="block" id="ai">
           <div class="block-head">
-            <div class="block-eyebrow">06 — Integration</div>
+            <div class="block-eyebrow">06: Integration</div>
             <h2 class="block-title">AI / embeddings integration</h2>
             <p class="block-dek">A provider-agnostic AI layer, currently backed by AWS Bedrock, with per-model
               adapters and token-aware batching. The rate/token math behind this is detailed in the
@@ -780,9 +780,9 @@ evaluate = (row: <span class="tok-kw">any</span>): RuleResult =&gt; {
           </div>
 
           <div class="card-grid">
-            <div class="mini-card"><div class="t">Adapter pattern</div><div class="d">Each embedding model (Titan, Cohere) owns its own request-building and response-parsing — switching models never touches the calling code.</div></div>
+            <div class="mini-card"><div class="t">Adapter pattern</div><div class="d">Each embedding model (Titan, Cohere) owns its own request-building and response-parsing, so switching models never touches the calling code.</div></div>
             <div class="mini-card"><div class="t">Centroid grouping</div><div class="d">Embeddings can accumulate a running average vector per GL account or counterparty, published to SharedContext for anomaly detection.</div></div>
-            <div class="mini-card"><div class="t">Usage tracking</div><div class="d">Token/record usage is upserted incrementally during processing — the billing trail for embedding spend.</div></div>
+            <div class="mini-card"><div class="t">Usage tracking</div><div class="d">Token/record usage is upserted incrementally during processing: the billing trail for embedding spend.</div></div>
             <div class="mini-card"><div class="t">Throttling-only retries</div><div class="d">Retries trigger only on 429 / ThrottlingException, exponential backoff 2s → 32s.</div></div>
           </div>
         </section>
@@ -790,27 +790,27 @@ evaluate = (row: <span class="tok-kw">any</span>): RuleResult =&gt; {
         <hr class="divider">
 
         <section class="block" id="highlights">
-          <div class="block-head"><div class="block-eyebrow">07 — Why it matters</div><h2 class="block-title">Engineering highlights</h2></div>
+          <div class="block-head"><div class="block-eyebrow">07: Why it matters</div><h2 class="block-title">Engineering highlights</h2></div>
           <ul class="plain">
-            <li><strong>Resumable by construction</strong> — a crash or restart resumes from the last checkpoint, not from zero, on collections that can run into hundreds of thousands of rows.</li>
-            <li><strong>Fair scheduling</strong> — large jobs are capped to a subset of worker slots so they can never starve small, fast jobs behind them.</li>
-            <li><strong>Provider-safe by default</strong> — per-model RPS and TPM limiters mean growth in usage degrades into backpressure, not throttling errors or runaway cost.</li>
-            <li><strong>O(1) precompute, not O(n) queries</strong> — account stats, pairing counts, and windowed velocity metrics are computed once per task via aggregation pipelines.</li>
-            <li><strong>Registry-based extensibility</strong> — a new fraud signal is one new file in the rules registry.</li>
-            <li><strong>Full observability</strong> — every queue, batch, and token event is streamed live and logged (see the Observability tab).</li>
+            <li><strong>Resumable by construction</strong>: a crash or restart resumes from the last checkpoint, not from zero, on collections that can run into hundreds of thousands of rows.</li>
+            <li><strong>Fair scheduling</strong>: large jobs are capped to a subset of worker slots so they can never starve small, fast jobs behind them.</li>
+            <li><strong>Provider-safe by default</strong>: per-model RPS and TPM limiters mean growth in usage degrades into backpressure, not throttling errors or runaway cost.</li>
+            <li><strong>O(1) precompute, not O(n) queries</strong>: account stats, pairing counts, and windowed velocity metrics are computed once per task via aggregation pipelines.</li>
+            <li><strong>Registry-based extensibility</strong>: a new fraud signal is one new file in the rules registry.</li>
+            <li><strong>Full observability</strong>: every queue, batch, and token event is streamed live and logged (see the Observability tab).</li>
           </ul>
         </section>
 
         <section class="block" id="hardening">
-          <div class="block-head"><div class="block-eyebrow">08 — In progress</div><h2 class="block-title">Known hardening items</h2></div>
+          <div class="block-head"><div class="block-eyebrow">08: In progress</div><h2 class="block-title">Known hardening items</h2></div>
           <div class="callout warn">
             <div class="cal-t">Confidence-scoring edge cases</div>
-            <p>Code review flagged a class of edge case across several rules: when a rule's required precomputed input is missing (e.g. no velocity data for a brand-new account), some early implementations reported a confident "no risk" (<code>confidence: 1</code>) rather than "unknown" (<code>confidence: 0</code>). The fix — treat missing precomputed data as low-confidence, not as evidence of safety — is being applied consistently across the registry. Active hardening on a working pipeline, not a design gap.</p>
+            <p>Code review flagged a class of edge case across several rules: when a rule's required precomputed input is missing (e.g. no velocity data for a brand-new account), some early implementations reported a confident "no risk" (<code>confidence: 1</code>) rather than "unknown" (<code>confidence: 0</code>). The fix, treating missing precomputed data as low-confidence rather than as evidence of safety, is being applied consistently across the registry. Active hardening on a working pipeline, not a design gap.</p>
           </div>
         </section>
 
         <section class="block" id="reference">
-          <div class="block-head"><div class="block-eyebrow">09 — Appendix</div><h2 class="block-title">File reference</h2></div>
+          <div class="block-head"><div class="block-eyebrow">09: Appendix</div><h2 class="block-title">File reference</h2></div>
           <table class="ref-table">
             <tr><td>src/processor/tasks/</td><td>TasksProcessor, TaskQueue, batch/checkpoint logic</td></tr>
             <tr><td>src/utilities/worker-queue/</td><td>Generic concurrency limiter</td></tr>
@@ -821,7 +821,7 @@ evaluate = (row: <span class="tok-kw">any</span>): RuleResult =&gt; {
             <tr><td>src/integrations/src/ai/</td><td>AI provider abstraction, Bedrock client, embedding adapters</td></tr>
             <tr><td>src/observability/ <em>(branch: test/je-testing)</em></td><td>Event bus, WS server, live dashboard</td></tr>
           </table>
-          <div class="footer-note">Source: <code>data-processor</code> repository, branch <code>feature/je-testing</code> — diff against <code>main</code>.</div>
+          <div class="footer-note">Source: <code>data-processor</code> repository, branch <code>feature/je-testing</code>, diff against <code>main</code>.</div>
         </section>
 
       </div>
@@ -835,19 +835,19 @@ evaluate = (row: <span class="tok-kw">any</span>): RuleResult =&gt; {
           <div class="doc-eyebrow">Observability</div>
           <h1 class="doc-title">Watch the pipeline run, live</h1>
           <p class="doc-dek">Every worker slot, queue depth, batch completion, and token spend is streamed in
-            real time and logged to disk. Nothing here is a mockup of a future plan — it's running code.</p>
+            real time and logged to disk. Nothing here is a mockup of a future plan: it's running code.</p>
 
           <div class="callout info">
             <div class="cal-t">How to see it right now</div>
             <p>Switch to the <code>test/je-testing</code> branch and start the server, then open:</p>
             <p style="font-family:ui-monospace,monospace;font-size:15px;color:var(--text);font-weight:700;">http://localhost:8000/dashboard</p>
-            <p>The dashboard connects over a WebSocket at <code>/observe</code> and starts rendering immediately — no configuration needed.</p>
+            <p>The dashboard connects over a WebSocket at <code>/observe</code> and starts rendering immediately, no configuration needed.</p>
           </div>
         </header>
 
         <section class="block" id="obs-events">
           <div class="block-head">
-            <div class="block-eyebrow">01 — Event model</div>
+            <div class="block-eyebrow">01: Event model</div>
             <h2 class="block-title">What gets tracked</h2>
             <p class="block-dek">15 distinct event types cover the full lifecycle of a task, from queueing to
               completion, plus system-level snapshots taken every 2 seconds.</p>
@@ -873,9 +873,9 @@ evaluate = (row: <span class="tok-kw">any</span>): RuleResult =&gt; {
 
         <section class="block" id="obs-dashboard">
           <div class="block-head">
-            <div class="block-eyebrow">02 — Live view</div>
+            <div class="block-eyebrow">02: Live view</div>
             <h2 class="block-title">Dashboard layout (representative)</h2>
-            <p class="block-dek">A sketch of what the real dashboard shows — header pills for headline numbers,
+            <p class="block-dek">A sketch of what the real dashboard shows: header pills for headline numbers,
               tabs for different views, and a live event log.</p>
           </div>
 
@@ -917,12 +917,12 @@ evaluate = (row: <span class="tok-kw">any</span>): RuleResult =&gt; {
               </div>
             </div>
           </div>
-          <p style="font-size:12px;color:var(--text-muted);">Illustrative values above — connect to <code>localhost:8000/dashboard</code> on <code>test/je-testing</code> for the real, live numbers.</p>
+          <p style="font-size:12px;color:var(--text-muted);">Illustrative values above: connect to <code>localhost:8000/dashboard</code> on <code>test/je-testing</code> for the real, live numbers.</p>
         </section>
 
         <section class="block" id="obs-pipeline">
           <div class="block-head">
-            <div class="block-eyebrow">03 — Data path</div>
+            <div class="block-eyebrow">03: Data path</div>
             <h2 class="block-title">From an emitted event to a pixel on screen</h2>
           </div>
 
@@ -964,14 +964,14 @@ evaluate = (row: <span class="tok-kw">any</span>): RuleResult =&gt; {
 
         <section class="block" id="obs-persist">
           <div class="block-head">
-            <div class="block-eyebrow">04 — Durability</div>
+            <div class="block-eyebrow">04: Durability</div>
             <h2 class="block-title">Replay buffer &amp; NDJSON log</h2>
           </div>
           <div class="card-grid">
             <div class="mini-card"><div class="t">In-memory replay buffer</div><div class="d">Last 500 events kept in the EventBus. A dashboard opened mid-run sees recent history immediately instead of a blank screen.</div></div>
-            <div class="mini-card"><div class="t">Daily NDJSON file</div><div class="d">Every event is also appended to <code>logs/observability-&lt;date&gt;.ndjson</code> — one JSON object per line, so any run can be replayed or analyzed after the fact.</div></div>
-            <div class="mini-card"><div class="t">Periodic snapshot</div><div class="d">Every 2 seconds while at least one dashboard is connected, a full system snapshot (worker/queue state) is published — keeps the view live even during quiet periods.</div></div>
-            <div class="mini-card"><div class="t">Zero configuration</div><div class="d">The WS server attaches directly to the existing HTTP server on boot — no separate service to run or deploy.</div></div>
+            <div class="mini-card"><div class="t">Daily NDJSON file</div><div class="d">Every event is also appended to <code>logs/observability-&lt;date&gt;.ndjson</code>, one JSON object per line, so any run can be replayed or analyzed after the fact.</div></div>
+            <div class="mini-card"><div class="t">Periodic snapshot</div><div class="d">Every 2 seconds while at least one dashboard is connected, a full system snapshot (worker/queue state) is published, keeping the view live even during quiet periods.</div></div>
+            <div class="mini-card"><div class="t">Zero configuration</div><div class="d">The WS server attaches directly to the existing HTTP server on boot, with no separate service to run or deploy.</div></div>
           </div>
         </section>
 
@@ -985,15 +985,15 @@ evaluate = (row: <span class="tok-kw">any</span>): RuleResult =&gt; {
         <header id="alg-overview">
           <div class="doc-eyebrow">Algorithms</div>
           <h1 class="doc-title">The math behind never tripping a provider's rate limits</h1>
-          <p class="doc-dek">Two independent limiter types run per Bedrock model — one bounding request rate,
-            one bounding token throughput — plus a deliberately pessimistic token estimator that stands in for
+          <p class="doc-dek">Two independent limiter types run per Bedrock model: one bounding request rate,
+            one bounding token throughput, plus a deliberately pessimistic token estimator that stands in for
             a real tokenizer we don't have offline.</p>
         </header>
 
         <section class="block" id="alg-rps">
           <div class="block-head">
-            <div class="block-eyebrow">01 — Request pacing</div>
-            <h2 class="block-title">RateLimiter — sliding 1-second window</h2>
+            <div class="block-eyebrow">01: Request pacing</div>
+            <h2 class="block-title">RateLimiter: sliding 1-second window</h2>
             <p class="block-dek">Caps how many requests can go out per second, and optionally enforces even
               spacing between them.</p>
           </div>
@@ -1006,7 +1006,7 @@ evaluate = (row: <span class="tok-kw">any</span>): RuleResult =&gt; {
             <li>Evict timestamps older than <code>now - 1000ms</code> from the tracking list.</li>
             <li>If fewer than <code>maxPerSecond</code> timestamps remain, record <code>now</code> and proceed immediately.</li>
             <li>Otherwise, compute how long until the oldest timestamp exits the window (<code>oldest + 1000ms - now</code>) and wait that long before retrying.</li>
-            <li>If <code>minIntervalMs</code> is set, also enforce a minimum gap since the last acquired call — even spacing, so requests aren't all bursted to the front of the window.</li>
+            <li>If <code>minIntervalMs</code> is set, also enforce a minimum gap since the last acquired call for even spacing, so requests aren't all bursted to the front of the window.</li>
           </ol>
 
           <div class="timeline">
@@ -1023,24 +1023,24 @@ evaluate = (row: <span class="tok-kw">any</span>): RuleResult =&gt; {
           </div>
 
           <p><strong>Why the minimum spacing matters:</strong> a naive sliding window lets all N requests fire
-            in the first few milliseconds of a fresh window, then go silent — a burst pattern that trips
+            in the first few milliseconds of a fresh window, then go silent: a burst pattern that trips
             provider-side burst protection even when the nominal RPS is respected. Enforcing a minimum interval
             (e.g. ~33ms for 30 RPS) spreads calls evenly across the whole second instead.</p>
         </section>
 
         <section class="block" id="alg-tpm">
           <div class="block-head">
-            <div class="block-eyebrow">02 — Throughput pacing</div>
-            <h2 class="block-title">TokenWindowLimiter — sliding token-budget window</h2>
+            <div class="block-eyebrow">02: Throughput pacing</div>
+            <h2 class="block-title">TokenWindowLimiter: sliding token-budget window</h2>
             <p class="block-dek">Same sliding-window idea as RateLimiter, but the unit being budgeted is tokens
-              consumed, not requests sent — matching how providers actually meter LLM/embedding usage (TPM
+              consumed, not requests sent, matching how providers actually meter LLM/embedding usage (TPM
               quotas).</p>
           </div>
 
           <ol class="plain">
             <li>Evict any window entries older than <code>windowMs</code> (default 60s), subtracting their token counts from the running total.</li>
             <li>If the requested token count fits under the remaining budget, record it and proceed.</li>
-            <li>If a single request is larger than the <em>entire</em> window budget, it can never "fit" under the normal rule — so it's let through alone, once the window is completely drained (<code>usedInWindow === 0</code>), instead of deadlocking forever.</li>
+            <li>If a single request is larger than the <em>entire</em> window budget, it can never "fit" under the normal rule, so it's let through alone, once the window is completely drained (<code>usedInWindow === 0</code>), instead of deadlocking forever.</li>
             <li>Otherwise wait until the oldest entry expires and re-check.</li>
           </ol>
 
@@ -1073,9 +1073,9 @@ evaluate = (row: <span class="tok-kw">any</span>): RuleResult =&gt; {
 
         <section class="block" id="alg-estimate">
           <div class="block-head">
-            <div class="block-eyebrow">03 — Estimation</div>
-            <h2 class="block-title">Token estimation — dual estimate, take the max</h2>
-            <p class="block-dek">There's no maintained offline tokenizer for Cohere models — their own SDK only
+            <div class="block-eyebrow">03: Estimation</div>
+            <h2 class="block-title">Token estimation: dual estimate, take the max</h2>
+            <p class="block-dek">There's no maintained offline tokenizer for Cohere models: their own SDK only
               tokenizes via a network call, which would defeat the point of a pre-flight check. So the estimate
               is deliberately biased upward using two independent heuristics.</p>
           </div>
@@ -1093,7 +1093,7 @@ evaluate = (row: <span class="tok-kw">any</span>): RuleResult =&gt; {
 
           <p>Real BPE tokenizers average ~4 chars/token and ~0.75 tokens/word for English text. This estimator
             deliberately uses a <em>smaller</em> chars-per-token divisor (3.3) and a <em>larger</em>
-            tokens-per-word multiplier (1.4) than reality — both biasing the result upward — then takes
+            tokens-per-word multiplier (1.4) than reality, both biasing the result upward, then takes
             whichever estimate is bigger. That keeps the estimate safe for dense text like code or IDs (where
             char-based estimation would under-count) and safe for prose (where word-based estimation would
             under-count), at the cost of somewhat over-reserving token budget.</p>
@@ -1117,14 +1117,14 @@ evaluate = (row: <span class="tok-kw">any</span>): RuleResult =&gt; {
             <div class="cal-t">Closing the loop: TOKEN_ESTIMATE_CHECK</div>
             <p>Bedrock returns the <em>actual</em> input token count in response headers. The system compares
               that against the pre-flight estimate and emits a <code>TOKEN_ESTIMATE_CHECK</code> observability
-              event with the percentage difference — visible live on the dashboard — so estimator accuracy is
+              event with the percentage difference (visible live on the dashboard), so estimator accuracy is
               measured against real traffic, not assumed.</p>
           </div>
         </section>
 
         <section class="block" id="alg-batching">
           <div class="block-head">
-            <div class="block-eyebrow">04 — Packing</div>
+            <div class="block-eyebrow">04: Packing</div>
             <h2 class="block-title">Token-aware batching</h2>
             <p class="block-dek">Greedily packs texts into the fewest requests possible, bounded by both a
               max item count and a max estimated-token budget per request.</p>
@@ -1151,15 +1151,15 @@ evaluate = (row: <span class="tok-kw">any</span>): RuleResult =&gt; {
           </div>
 
           <p>This keeps any single <code>InvokeModelCommand</code> from consuming a large fraction of the
-            model's TPM quota in one call — many small, paced batches instead of one large one that could blow
+            model's TPM quota in one call: many small, paced batches instead of one large one that could blow
             the whole minute's budget at once.</p>
         </section>
 
         <section class="block" id="alg-retry">
           <div class="block-head">
-            <div class="block-eyebrow">05 — Failure handling</div>
+            <div class="block-eyebrow">05: Failure handling</div>
             <h2 class="block-title">Retry &amp; exponential backoff</h2>
-            <p class="block-dek">Retries only on throttling responses — anything else fails fast.</p>
+            <p class="block-dek">Retries only on throttling responses; anything else fails fast.</p>
           </div>
 
           <div class="timeline">
@@ -1175,8 +1175,8 @@ evaluate = (row: <span class="tok-kw">any</span>): RuleResult =&gt; {
           </div>
 
           <ul class="plain">
-            <li><strong>Only retries on throttling</strong> — HTTP 429, <code>ThrottlingException</code>, or <code>TooManyRequestsException</code>. Any other error (validation, auth, malformed request) fails immediately since retrying won't help.</li>
-            <li><strong>Re-acquires the rate limiter on every attempt</strong> — including retries — so a retry storm still respects the same RPS pacing as fresh calls.</li>
+            <li><strong>Only retries on throttling</strong>: HTTP 429, <code>ThrottlingException</code>, or <code>TooManyRequestsException</code>. Any other error (validation, auth, malformed request) fails immediately since retrying won't help.</li>
+            <li><strong>Re-acquires the rate limiter on every attempt</strong>, including retries, so a retry storm still respects the same RPS pacing as fresh calls.</li>
             <li><strong>30-second hard timeout</strong> per <code>InvokeModelCommand</code> so one stalled call can't hang an entire batch indefinitely.</li>
           </ul>
         </section>
