@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hit Types &amp; Risk Scoring — How It Works</title>
+<style>
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+/* ============================= TOKENS (light only) ============================= */
+:root {
+  --accent: #3b5bdb;
+  --accent-strong: #28409e;
+  --accent-soft: #eaf0fb;
+  --accent-line: #c9d7f5;
+
+  --bg: #faf9f6;
+  --surface: #ffffff;
+  --surface-2: #f2f0e9;
+  --border: #e6e2d6;
+  --border-strong: #d2cdbc;
+
+  --text: #201f1a;
+  --text-mid: #55534a;
+  --text-muted: #8a8779;
+
+  --mono: ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* Semantic risk bands — match the live product exactly */
+  --low: #3B6D11;    --low-bg: #EAF3DE;    --low-line: #d3e6bd;
+  --medium: #B76E00;  --medium-bg: #FFF3E0; --medium-line: #f5d9a8;
+  --high: #A32D2D;    --high-bg: #FCEBEB;   --high-line: #f2c9c9;
+  --critical: #6A1B9A; --critical-bg: #F1E3F7; --critical-line: #e2c3ef;
+
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 2px rgba(30,25,10,0.04), 0 10px 28px rgba(30,25,10,0.06);
+}
+/* Light theme only, deliberately — colors must match the live (light-only) product table. */
+
+/* ============================= BASE ============================= */
+body {
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page { max-width: 920px; margin: 0 auto; padding: 0 32px 100px; }
+
+/* ── Top bar ── */
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+.topbar-inner {
+  max-width: 920px; margin: 0 auto; padding: 13px 32px;
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+}
+.topbar .tb-title { font-size: 13px; font-weight: 700; letter-spacing: -0.01em; }
+.topbar .tb-badge {
+  font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--accent-strong); background: var(--accent-soft); border: 1px solid var(--accent-line);
+  padding: 3px 9px; border-radius: 20px;
+}
+.topbar .tb-formula {
+  margin-left: auto; display: flex; align-items: center; gap: 7px;
+  font-family: var(--mono); font-size: 12px; color: var(--text-muted);
+  flex-wrap: wrap;
+}
+.topbar .tb-formula b { color: var(--text); font-weight: 700; }
+
+/* ── Hero ── */
+.hero { padding: 48px 0 8px; }
+.eyebrow {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--accent-strong); margin-bottom: 12px;
+}
+h1 {
+  font-size: 32px; font-weight: 800; letter-spacing: -0.025em; line-height: 1.15;
+  text-wrap: balance; margin-bottom: 14px;
+}
+.dek { font-size: 16px; color: var(--text-mid); max-width: 66ch; line-height: 1.65; }
+.dek strong { color: var(--text); font-weight: 650; }
+
+/* ── Sections ── */
+section { margin-top: 52px; scroll-margin-top: 90px; }
+.sec-head { margin-bottom: 18px; }
+.sec-eyebrow { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 6px; }
+h2 { font-size: 22px; font-weight: 800; letter-spacing: -0.018em; text-wrap: balance; }
+.sec-dek { font-size: 14.5px; color: var(--text-mid); margin-top: 8px; max-width: 68ch; line-height: 1.6; }
+
+p { color: var(--text-mid); max-width: 68ch; margin-bottom: 12px; }
+p:last-child { margin-bottom: 0; }
+strong { color: var(--text); font-weight: 650; }
+
+/* ============================= PROCESS DIAGRAM ============================= */
+.formula-strip {
+  display: flex; align-items: stretch; gap: 0; overflow-x: auto;
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
+  box-shadow: var(--shadow); margin: 18px 0;
+}
+.fstep { flex: 1; min-width: 140px; padding: 16px 16px; border-right: 1px solid var(--border); }
+.fstep:last-child { border-right: none; }
+.fstep .fs-n { font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--accent-strong); background: var(--accent-soft); display: inline-flex; align-items: center; justify-content: center; width: 19px; height: 19px; border-radius: 5px; margin-bottom: 8px; }
+.fstep .fs-t { font-size: 13.5px; font-weight: 700; margin-bottom: 4px; }
+.fstep .fs-d { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+.fjoin { display: flex; align-items: center; justify-content: center; padding: 0 2px; color: var(--border-strong); flex-shrink: 0; font-size: 16px; }
+@media (max-width: 760px) {
+  .formula-strip { flex-direction: column; }
+  .fstep { border-right: none; border-bottom: 1px solid var(--border); }
+  .fstep:last-child { border-bottom: none; }
+  .fjoin { display: none; }
+}
+
+.band-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 18px 0; }
+.band { border-radius: var(--radius-sm); padding: 12px 14px; border: 1px solid; }
+.band .b-range { font-family: var(--mono); font-size: 10.5px; font-weight: 700; opacity: 0.8; margin-bottom: 3px; }
+.band .b-label { font-size: 14px; font-weight: 800; }
+.band.b-low { background: var(--low-bg); border-color: var(--low-line); color: var(--low); }
+.band.b-medium { background: var(--medium-bg); border-color: var(--medium-line); color: var(--medium); }
+.band.b-high { background: var(--high-bg); border-color: var(--high-line); color: var(--high); }
+.band.b-critical { background: var(--critical-bg); border-color: var(--critical-line); color: var(--critical); }
+@media (max-width: 600px) { .band-strip { grid-template-columns: 1fr 1fr; } }
+
+/* ============================= HIT-TYPE CARDS ============================= */
+.family-group { margin-bottom: 26px; }
+.family-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  margin-bottom: 12px; padding-bottom: 9px; border-bottom: 1px solid var(--border); flex-wrap: wrap;
+}
+.family-head .fh-name { font-size: 15.5px; font-weight: 800; }
+.family-head .fh-sum { font-family: var(--mono); font-size: 11.5px; color: var(--text-muted); }
+
+.hit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 700px) { .hit-grid { grid-template-columns: 1fr; } }
+
+.hit-card {
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
+  box-shadow: var(--shadow); padding: 14px 16px; position: relative;
+}
+.hit-card .hc-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.hit-card .hc-name { font-size: 14px; font-weight: 750; display: flex; align-items: center; gap: 8px; }
+.hit-card .hc-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+.hit-card .hc-desc { font-size: 12.5px; color: var(--text-mid); line-height: 1.5; margin-bottom: 10px; }
+
+.weight-control .wc-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.weight-control .wc-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+.weight-control .wc-val { font-family: var(--mono); font-size: 12.5px; font-weight: 700; }
+.slider-track { position: relative; height: 6px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--border); }
+.slider-fill { position: absolute; top: -1px; left: -1px; bottom: -1px; border-radius: 4px; opacity: 0.9; }
+.slider-thumb { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; background: var(--surface); border: 2.5px solid; transform: translate(-50%, -50%); box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+
+/* Show-steps toggle */
+.steps-toggle {
+  margin-top: 11px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;
+  font-size: 12px; font-weight: 700; cursor: pointer; padding: 7px 10px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text-mid);
+}
+.steps-toggle:hover { background: var(--border); }
+.steps-toggle .chev { transition: transform 0.15s; font-size: 10px; }
+.hit-card.open .steps-toggle .chev { transform: rotate(180deg); }
+.steps-toggle .lbl-show { display: inline; } .steps-toggle .lbl-hide { display: none; }
+.hit-card.open .steps-toggle .lbl-show { display: none; } .hit-card.open .steps-toggle .lbl-hide { display: inline; }
+
+.steps-body { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
+.hit-card.open .steps-body { display: block; }
+.mini-step { display: flex; gap: 8px; padding: 5px 0; font-size: 12px; color: var(--text-mid); line-height: 1.5; }
+.mini-step .ms-n {
+  flex-shrink: 0; width: 17px; height: 17px; border-radius: 5px; font-family: var(--mono);
+  font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center;
+  background: var(--surface-2); color: var(--text-mid); margin-top: 1px;
+}
+
+/* ============================= THRESHOLD GAUGE ============================= */
+.threshold-panel {
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
+  box-shadow: var(--shadow); padding: 22px 24px; margin: 18px 0;
+}
+.gauge-row { display: flex; align-items: center; gap: 22px; margin: 18px 0 6px; flex-wrap: wrap; }
+.gauge-track {
+  flex: 1; min-width: 260px; height: 14px; border-radius: 8px; position: relative;
+  background: linear-gradient(to right, var(--low-bg) 0%, var(--low-bg) 45%, var(--high-bg) 55%, var(--high-bg) 100%);
+  border: 1px solid var(--border-strong);
+}
+.gauge-marker { position: absolute; top: -8px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.gauge-marker .gm-line { width: 3px; height: 30px; background: var(--accent); border-radius: 2px; }
+.gauge-marker .gm-val { font-family: var(--mono); font-size: 12px; font-weight: 800; color: #fff; background: var(--accent); padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
+.gauge-ends { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--text-muted); margin-top: 8px; }
+.gauge-side-labels { display: flex; justify-content: space-between; margin-top: 4px; }
+.gauge-side-labels span { font-size: 12px; font-weight: 700; }
+.gauge-side-labels .gsl-below { color: var(--text-muted); }
+.gauge-side-labels .gsl-above { color: var(--high); }
+
+.callout {
+  border: 1px solid var(--border); border-left: 3px solid var(--accent); background: var(--accent-soft);
+  border-radius: var(--radius-sm); padding: 14px 16px; margin: 14px 0;
+}
+.callout .cal-t { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent-strong); margin-bottom: 5px; }
+.callout p { font-size: 13px; color: var(--text); max-width: none; }
+
+/* ============================= WORKED EXAMPLE ============================= */
+.example-panel { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); overflow: hidden; margin: 18px 0; }
+.example-head { padding: 14px 18px; background: var(--surface-2); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.example-head .eh-title { font-size: 13px; font-weight: 700; }
+.example-head .eh-meta { font-family: var(--mono); font-size: 11.5px; color: var(--text-muted); }
+.example-body { padding: 16px 18px; }
+.ex-row-head, .ex-row { display: grid; grid-template-columns: 2fr 0.8fr 0.8fr 0.8fr 0.9fr; gap: 10px; align-items: center; padding: 8px 0; }
+.ex-row-head { border-bottom: 1px solid var(--border-strong); padding-bottom: 7px; }
+.ex-row-head span { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+.ex-row { border-bottom: 1px dashed var(--border); }
+.ex-row:last-of-type { border-bottom: none; }
+.ex-name { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; }
+.ex-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+.ex-num { font-family: var(--mono); font-size: 12.5px; text-align: right; color: var(--text-mid); }
+.ex-num.strong { color: var(--text); font-weight: 700; }
+.ex-hit-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 7px; border-radius: 10px; text-align: center; white-space: nowrap; }
+.ex-hit-badge.yes { background: var(--high-bg); color: var(--high); }
+.ex-hit-badge.no { background: var(--surface-2); color: var(--text-muted); }
+.example-total { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 14px; padding: 14px 16px; background: var(--accent-soft); border: 1px solid var(--accent-line); border-radius: var(--radius-sm); flex-wrap: wrap; }
+.example-total .et-label { font-size: 13px; font-weight: 700; color: var(--accent-strong); }
+.example-total .et-score { font-family: var(--mono); font-size: 24px; font-weight: 800; color: var(--accent-strong); }
+.example-total .et-band { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; padding: 4px 11px; border-radius: 20px; }
+
+.footer-panel { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); padding: 18px 20px; margin: 18px 0; display: flex; gap: 14px; align-items: flex-start; }
+.footer-panel .fp-icon { flex-shrink: 0; width: 30px; height: 30px; border-radius: 8px; background: var(--accent-soft); border: 1px solid var(--accent-line); display: flex; align-items: center; justify-content: center; font-size: 14px; color: var(--accent-strong); font-weight: 800; }
+.footer-panel p { font-size: 13px; }
+
+.doc-footer { margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-muted); }
+
+@media (max-width: 600px) {
+  .ex-row-head, .ex-row { grid-template-columns: 1.6fr 0.7fr 0.7fr 0.7fr; }
+  .ex-row-head span:last-child, .ex-row .ex-hit-badge { display: none; }
+}
+
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="tb-title">Hit Types &amp; Risk Scoring</div>
+    <div class="tb-badge">Preview · not yet editable</div>
+    <div class="tb-formula"><span>signal score</span><span>×</span><span>weight</span><span>=</span><b>Risk Score</b></div>
+  </div>
+</div>
+
+<div class="page">
+
+  <header class="hero">
+    <div class="eyebrow">How the AI Risk Score works</div>
+    <h1>Every journal entry is checked against 10 signals — this is how they add up to one score.</h1>
+    <p class="dek">
+      Each signal — a <strong>hit type</strong> — looks at one specific thing about an entry and gives it a
+      score from 0 to 1. Those scores combine, using a fixed weight per signal, into the single
+      <strong>Risk Score</strong> your team already sees in the general ledger table. Click <strong>Show
+      steps</strong> on any signal below to see exactly how its score is worked out.
+    </p>
+  </header>
+
+  <!-- ===================== 1. THE FORMULA ===================== -->
+  <section id="formula">
+    <div class="sec-head">
+      <div class="sec-eyebrow">The big picture</div>
+      <h2>From one entry to one Risk Score</h2>
+    </div>
+
+    <div class="formula-strip">
+      <div class="fstep"><div class="fs-n">1</div><div class="fs-t">10 signals check the entry</div><div class="fs-d">Size, timing, history, wording, and more.</div></div>
+      <div class="fjoin">→</div>
+      <div class="fstep"><div class="fs-n">2</div><div class="fs-t">Each scores 0 – 1</div><div class="fs-d">0 = nothing unusual, 1 = as suspicious as it gets.</div></div>
+      <div class="fjoin">→</div>
+      <div class="fstep"><div class="fs-n">3</div><div class="fs-t">Weighted &amp; summed</div><div class="fs-d">Some signals matter more, so each has a fixed weight.</div></div>
+      <div class="fjoin">→</div>
+      <div class="fstep"><div class="fs-n">4</div><div class="fs-t">One Risk Score, 0 – 100</div><div class="fs-d">Banded into Low / Medium / High / Critical.</div></div>
+    </div>
+
+    <div class="band-strip">
+      <div class="band b-low"><div class="b-range">0 – 24</div><div class="b-label">Low</div></div>
+      <div class="band b-medium"><div class="b-range">25 – 49</div><div class="b-label">Medium</div></div>
+      <div class="band b-high"><div class="b-range">50 – 74</div><div class="b-label">High</div></div>
+      <div class="band b-critical"><div class="b-range">75 – 100</div><div class="b-label">Critical</div></div>
+    </div>
+    <p>These are the same bands already shown as colored badges next to the Risk Score column in the general ledger view.</p>
+  </section>
+
+  <!-- ===================== 2. THE 10 HIT TYPES ===================== -->
+  <section id="hit-types">
+    <div class="sec-head">
+      <div class="sec-eyebrow">The 10 signals</div>
+      <h2>Hit types and their weight</h2>
+      <p class="sec-dek">Two families, scored and weighted separately, then averaged into the final Risk Score. Sliders show each signal's current weight — a preview of adjustable controls, not live yet.</p>
+    </div>
+
+    <div class="family-group">
+      <div class="family-head"><div class="fh-name">Risk Scoring — behavior &amp; pattern signals</div><div class="fh-sum">8 signals · weights sum to 100%</div></div>
+      <div class="hit-grid" id="risk-scoring-grid"></div>
+    </div>
+
+    <div class="family-group">
+      <div class="family-head"><div class="fh-name">Anomaly Detection — AI-driven similarity signals</div><div class="fh-sum">2 signals · 50% / 50%</div></div>
+      <div class="hit-grid" id="anomaly-detection-grid"></div>
+    </div>
+
+    <div class="callout">
+      <div class="cal-t">How the two families combine</div>
+      <p>Risk Scoring produces one score (its 8 signals, weighted as above), and Anomaly Detection produces a separate score (its 2 signals, 50/50). The final Risk Score is a simple average of those two family scores.</p>
+    </div>
+  </section>
+
+  <!-- ===================== 3. THE THRESHOLD ===================== -->
+  <section id="threshold">
+    <div class="sec-head">
+      <div class="sec-eyebrow">When a signal becomes visible</div>
+      <h2>The 0.5 cutoff</h2>
+      <p class="sec-dek">A signal's score only turns into a visible tag — and becomes searchable in the Hit Type filter — once it crosses this line.</p>
+    </div>
+
+    <div class="threshold-panel">
+      <p><strong>Below 0.5:</strong> the signal still contributes to the Risk Score, but no tag is shown and the entry won't appear if someone filters by that hit type.</p>
+      <p style="margin-top:6px;"><strong>Above 0.5:</strong> a colored tag appears on the entry, and it becomes findable through the Hit Type filter.</p>
+
+      <div class="gauge-row"><div class="gauge-track"><div class="gauge-marker"><div class="gm-line"></div><div class="gm-val">0.5</div></div></div></div>
+      <div class="gauge-side-labels"><span class="gsl-below">← Quiet — counted, not shown</span><span class="gsl-above">Tagged &amp; filterable →</span></div>
+      <div class="gauge-ends"><span>0.0</span><span>1.0</span></div>
+    </div>
+
+    <div class="callout">
+      <div class="cal-t">Worth knowing — one flat number today</div>
+      <p>The 0.5 cutoff is currently shared by all 10 signals, even though they score very differently — Benford's Law Violation rarely exceeds 0.8, while Velocity Anomaly or Threshold Avoidance can easily hit 0.9–1.0. A natural next step is a per-signal cutoff, tuned to how each one actually scores.</p>
+    </div>
+  </section>
+
+  <!-- ===================== 4. WORKED EXAMPLE ===================== -->
+  <section id="example">
+    <div class="sec-head">
+      <div class="sec-eyebrow">Seeing it in action</div>
+      <h2>One entry, worked out end to end</h2>
+      <p class="sec-dek">A $49,500 journal entry posted at 11:40pm on a Saturday.</p>
+    </div>
+
+    <div class="example-panel">
+      <div class="example-head"><div class="eh-title">GL-2026-04871 · $49,500.00 · Posted Sat 23:40</div><div class="eh-meta">Family: Risk Scoring</div></div>
+      <div class="example-body">
+        <div class="ex-row-head"><span>Signal</span><span style="text-align:right">Score</span><span style="text-align:right">Weight</span><span style="text-align:right">Points</span><span style="text-align:center">Tagged?</span></div>
+        <div class="ex-row"><div class="ex-name"><span class="ex-dot" style="background:#4338CA"></span>Threshold Avoidance</div><div class="ex-num">0.90</div><div class="ex-num">15%</div><div class="ex-num strong">13.5</div><div style="text-align:center"><span class="ex-hit-badge yes">Yes</span></div></div>
+        <div class="ex-row"><div class="ex-name"><span class="ex-dot" style="background:#1B5FAD"></span>Timing Pattern</div><div class="ex-num">0.70</div><div class="ex-num">10%</div><div class="ex-num strong">7.0</div><div style="text-align:center"><span class="ex-hit-badge yes">Yes</span></div></div>
+        <div class="ex-row"><div class="ex-name"><span class="ex-dot" style="background:#C0158A"></span>Large Value</div><div class="ex-num">0.45</div><div class="ex-num">20%</div><div class="ex-num strong">9.0</div><div style="text-align:center"><span class="ex-hit-badge no">No</span></div></div>
+        <div class="ex-row"><div class="ex-name"><span class="ex-dot" style="background:#9A1B7A"></span>Rare Account Pairing</div><div class="ex-num">0.20</div><div class="ex-num">15%</div><div class="ex-num strong">3.0</div><div style="text-align:center"><span class="ex-hit-badge no">No</span></div></div>
+        <div class="ex-row"><div class="ex-name" style="color:var(--text-muted)">+ 4 other signals</div><div class="ex-num">—</div><div class="ex-num">30%</div><div class="ex-num">4.2</div><div style="text-align:center"><span class="ex-hit-badge no">No</span></div></div>
+
+        <div class="example-total"><div><div class="et-label">Risk Scoring family score</div><div style="font-family:var(--mono);font-size:11.5px;color:var(--text-mid);margin-top:2px;">(13.5+7.0+9.0+3.0+4.2) = 36.7</div></div></div>
+
+        <p style="margin-top:14px;">This entry also scored <strong>62.4</strong> on Anomaly Detection (a Behavioral Anomaly hit). Final Risk Score is the average of the two:</p>
+
+        <div class="example-total" style="margin-top:10px;">
+          <div><div class="et-label">Final Risk Score</div><div style="font-family:var(--mono);font-size:11.5px;color:var(--text-mid);margin-top:2px;">(36.7 + 62.4) ÷ 2 = 49.6 → rounds to 50</div></div>
+          <div class="et-score">50</div>
+          <div class="et-band" style="background:var(--high-bg);color:var(--high);">High</div>
+        </div>
+
+        <p style="margin-top:14px;">This row would show a <strong>High (50)</strong> badge and two tags: <strong>Threshold Avoidance</strong> and <strong>Timing Pattern</strong> — the two signals that crossed 0.5.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 5. WHERE IT SHOWS UP ===================== -->
+  <section id="in-product">
+    <div class="footer-panel">
+      <div class="fp-icon">i</div>
+      <div><p><strong>Where you already see this:</strong> the Risk Score column and colored hit-type tags in the General Ledger table are exactly what this page describes. Hovering the Risk Score badge shows the same per-signal points breakdown. The Hit Type column filter lets anyone search for entries carrying a specific tag.</p></div>
+    </div>
+  </section>
+
+  <div class="doc-footer">
+    Reflects current configuration on <code>data-processor</code> branch <code>feature/je-testing</code> and
+    <code>smart-audit-redux</code> branch <code>feature/ui-for-ai</code>. All controls on this page are
+    previews of the current settings — nothing here changes production behavior.
+  </div>
+
+</div>
+
+<script>
+const HIT_TYPES = {
+  riskScoring: [
+    {
+      name: "Large Value", weight: 20, color: "#C0158A",
+      desc: "Entry amount is unusually large relative to this account's normal range.",
+      steps: [
+        "Look up this GL account's normal average amount and typical swing (spread), from its own history.",
+        "If the account has fewer than 5 past entries, there isn't enough history to judge — score stays low (0.3) with low confidence.",
+        "Otherwise, measure how many typical swings above average this entry falls — 1 swing = mild, 5+ swings = extreme (score climbs 0.2 → 1.0).",
+        "Confidence rises with more account history, capping out once the account has 30+ past entries."
+      ]
+    },
+    {
+      name: "Round Amount", weight: 10, color: "#6A1B9A",
+      desc: "Entry amount is a suspiciously round number.",
+      steps: [
+        "Check if the amount has no cents at all (e.g. $1,250.00) — adds +0.3.",
+        "Check if it's a round $1,000 (e.g. $5,000) — adds +0.3 more.",
+        "Check if it's a round $10,000 (e.g. $50,000) — adds +0.2 more.",
+        "These stack — a very round number like $50,000 hits all three and scores 0.8. No history needed, so confidence is always 1.0."
+      ]
+    },
+    {
+      name: "Timing Pattern", weight: 10, color: "#1B5FAD",
+      desc: "Entry was posted at an unusual time — weekend, after hours, or period-end.",
+      steps: [
+        "Check if the entry was posted on a Saturday or Sunday — adds +0.4.",
+        "Check if it was posted before 7am or at/after 9pm UTC — adds +0.3.",
+        "Both can fire together — a Saturday-night entry scores 0.7, the highest this signal reaches alone.",
+        "If the posting time is missing, the signal stays silent (0 score, 0 confidence) rather than guessing."
+      ]
+    },
+    {
+      name: "Velocity Anomaly", weight: 12, color: "#0F7D63",
+      desc: "Unusually high frequency of entries from the same user in a short window.",
+      steps: [
+        "Count how many entries this same user posted in the trailing 48 hours.",
+        "More than 8 entries → 0.3 (\"somewhat busy\").",
+        "More than 20 → 0.6 (\"elevated\"). More than 50 → 0.9 (\"extreme burst\").",
+        "Confidence is 1.0 if the count was computed successfully, 0 if it couldn't be (e.g. missing timestamp)."
+      ]
+    },
+    {
+      name: "Benford's Law Violation", weight: 8, color: "#3B6D11",
+      desc: "The mix of first digits across amounts doesn't match what real financial data normally looks like.",
+      steps: [
+        "Take only the first digit of the amount (e.g. $8,234 → 8).",
+        "Real financial data mostly starts with 1–4 (Benford's Law) — those score low, 0.1.",
+        "Digits 5–6 score a mild 0.3; digits 7–9 (rarest in nature) score 0.6–0.8, climbing with each digit.",
+        "Confidence is always a flat 0.5 — one entry's first digit alone is a weak signal, only meaningful across many entries."
+      ]
+    },
+    {
+      name: "Threshold Avoidance", weight: 15, color: "#4338CA",
+      desc: "Amount sits just below an approval or reporting threshold.",
+      steps: [
+        "Check if the amount is just below one of three approval limits: $10,000, $50,000, or $100,000 (within 10% under).",
+        "If so, add +0.5.",
+        "Separately, check if the same user has 3+ other near-threshold entries in the last 48 hours (a \"structuring\" pattern) — add +0.4 more.",
+        "Both together score 0.9. Confidence is always 1.0 — no history dependency."
+      ]
+    },
+    {
+      name: "Rare Account Pairing", weight: 15, color: "#9A1B7A",
+      desc: "This debit/credit account combination is rarely seen together.",
+      steps: [
+        "Identify this entry's \"pairing\" — the GL account plus the counterparty name.",
+        "Look up how many times this exact pairing has occurred before, across all history.",
+        "Never seen before → 0.8. Seen 1–2 times → 0.5. Seen 3–5 times → 0.2. More than 5 → 0 (routine).",
+        "Confidence is only 0.6 below 3 prior occurrences (not enough history yet to be sure), rising to 1.0 at 3+."
+      ]
+    },
+    {
+      name: "Dormant Account Activation", weight: 10, color: "#B7521B",
+      desc: "Activity posted to an account inactive for an extended period.",
+      steps: [
+        "Check if this is the account's very first entry ever — if so, score a moderate 0.5 with lower confidence (0.4), since it's genuinely ambiguous.",
+        "Otherwise, calculate days since the account's last entry.",
+        "Over 365 days → 0.9. Over 180 days → 0.65. Over 90 days → 0.35. 90 days or less → 0 (routine).",
+        "Confidence is 1.0 whenever a real last-activity date exists."
+      ]
+    }
+  ],
+  anomalyDetection: [
+    {
+      name: "Behavioral Anomaly", weight: 50, color: "#C23934",
+      desc: "Entry deviates from this account or user's typical posting behavior, as learned by the AI model.",
+      steps: [
+        "An AI model converts this entry's posting behavior (timing, structure) into a numeric \"fingerprint.\"",
+        "The system compares it to the account's own typical fingerprint, built from its history (or a broader transaction-type fingerprint if the account is new).",
+        "The further apart the two fingerprints are, the higher the score — 0 means identical to normal, 1 means as different as possible.",
+        "Confidence is 1.0 whenever a valid comparison exists; if there's nothing to compare, the signal abstains (0, 0)."
+      ]
+    },
+    {
+      name: "Semantic Anomaly", weight: 50, color: "#B76E00",
+      desc: "Entry description reads as unusual compared to similar entries, as learned by the AI model.",
+      steps: [
+        "An AI model reads this entry's description text and converts its meaning into a numeric \"fingerprint.\"",
+        "The system compares it to the account's typical description fingerprint, built from its history.",
+        "The further the meaning drifts from what's typical, the higher the score, on a smooth 0–1 scale.",
+        "Confidence is 1.0 whenever a valid comparison exists; otherwise the signal abstains (0, 0)."
+      ]
+    }
+  ]
+};
+
+function renderGrid(containerId, items) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = items.map((h, i) => {
+    const stepsHtml = h.steps.map((s, si) =>
+      `<div class="mini-step"><span class="ms-n">${si + 1}</span><span>${s}</span></div>`
+    ).join('');
+    return `
+      <div class="hit-card" id="${containerId}-${i}">
+        <div class="hc-top"><div class="hc-name"><span class="hc-dot" style="background:${h.color}"></span>${h.name}</div></div>
+        <div class="hc-desc">${h.desc}</div>
+        <div class="weight-control">
+          <div class="wc-row"><span class="wc-label">Weight</span><span class="wc-val" style="color:${h.color}">${h.weight}%</span></div>
+          <div class="slider-track"><div class="slider-fill" style="width:${h.weight}%;background:${h.color}"></div><div class="slider-thumb" style="left:${h.weight}%;border-color:${h.color}"></div></div>
+        </div>
+        <button class="steps-toggle" type="button">
+          <span class="lbl-show">Show steps</span><span class="lbl-hide">Hide steps</span>
+          <span class="chev">▾</span>
+        </button>
+        <div class="steps-body">${stepsHtml}</div>
+      </div>`;
+  }).join('');
+}
+
+renderGrid('risk-scoring-grid', HIT_TYPES.riskScoring);
+renderGrid('anomaly-detection-grid', HIT_TYPES.anomalyDetection);
+
+document.querySelectorAll('.steps-toggle').forEach(btn => {
+  btn.addEventListener('click', () => btn.closest('.hit-card').classList.toggle('open'));
+});
+</script>
+
+</body>
+</html>
