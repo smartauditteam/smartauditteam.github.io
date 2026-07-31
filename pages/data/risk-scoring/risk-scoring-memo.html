@@ -1,0 +1,892 @@
+<title>How Our Risk Scoring Works</title>
+<style>
+  :root {
+    --paper: #f3f6f1;
+    --card: #fbfdf9;
+    --ink: #1b241f;
+    --ink-soft: #4a5a4c;
+    --ink-faint: #7c8c7e;
+    --rule: #cfdac9;
+    --rule-strong: #a9bba2;
+    --margin: #a23b2e;
+    --accent: #a23b2e;
+    --accent-soft: rgba(162, 59, 46, 0.09);
+    --low: #4f7858;
+    --low-bg: rgba(79, 120, 88, 0.13);
+    --low-line: rgba(79, 120, 88, 0.35);
+    --medium: #96701c;
+    --medium-bg: rgba(169, 120, 31, 0.16);
+    --medium-line: rgba(169, 120, 31, 0.4);
+    --high: #a23b2e;
+    --high-bg: rgba(162, 59, 46, 0.12);
+    --high-line: rgba(162, 59, 46, 0.38);
+    --shadow: 0 1px 2px rgba(27, 36, 31, 0.06), 0 6px 20px -10px rgba(27, 36, 31, 0.18);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #131811;
+      --card: #1a2017;
+      --ink: #e8eee2;
+      --ink-soft: #aebba7;
+      --ink-faint: #7f8f7c;
+      --rule: #2c382a;
+      --rule-strong: #3d4c39;
+      --margin: #e07a63;
+      --accent: #e07a63;
+      --accent-soft: rgba(224, 122, 99, 0.12);
+      --low: #8ec698;
+      --low-bg: rgba(142, 198, 152, 0.14);
+      --low-line: rgba(142, 198, 152, 0.32);
+      --medium: #e0b24e;
+      --medium-bg: rgba(224, 178, 78, 0.16);
+      --medium-line: rgba(224, 178, 78, 0.36);
+      --high: #e07a63;
+      --high-bg: rgba(224, 122, 99, 0.16);
+      --high-line: rgba(224, 122, 99, 0.36);
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 30px -12px rgba(0, 0, 0, 0.55);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper: #131811;
+    --card: #1a2017;
+    --ink: #e8eee2;
+    --ink-soft: #aebba7;
+    --ink-faint: #7f8f7c;
+    --rule: #2c382a;
+    --rule-strong: #3d4c39;
+    --margin: #e07a63;
+    --accent: #e07a63;
+    --accent-soft: rgba(224, 122, 99, 0.12);
+    --low: #8ec698;
+    --low-bg: rgba(142, 198, 152, 0.14);
+    --low-line: rgba(142, 198, 152, 0.32);
+    --medium: #e0b24e;
+    --medium-bg: rgba(224, 178, 78, 0.16);
+    --medium-line: rgba(224, 178, 78, 0.36);
+    --high: #e07a63;
+    --high-bg: rgba(224, 122, 99, 0.16);
+    --high-line: rgba(224, 122, 99, 0.36);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 30px -12px rgba(0, 0, 0, 0.55);
+  }
+
+  :root[data-theme="light"] {
+    --paper: #f3f6f1;
+    --card: #fbfdf9;
+    --ink: #1b241f;
+    --ink-soft: #4a5a4c;
+    --ink-faint: #7c8c7e;
+    --rule: #cfdac9;
+    --rule-strong: #a9bba2;
+    --margin: #a23b2e;
+    --accent: #a23b2e;
+    --accent-soft: rgba(162, 59, 46, 0.09);
+    --low: #4f7858;
+    --low-bg: rgba(79, 120, 88, 0.13);
+    --low-line: rgba(79, 120, 88, 0.35);
+    --medium: #96701c;
+    --medium-bg: rgba(169, 120, 31, 0.16);
+    --medium-line: rgba(169, 120, 31, 0.4);
+    --high: #a23b2e;
+    --high-bg: rgba(162, 59, 46, 0.12);
+    --high-line: rgba(162, 59, 46, 0.38);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: Charter, "Bitstream Charter", "Sitka Text", Cambria, Georgia, serif;
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .sheet {
+    max-width: 840px;
+    margin: 0 auto;
+    padding: 0 0 6rem;
+    position: relative;
+  }
+
+  .margin-rule {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 88px;
+    width: 1px;
+    background: var(--margin);
+    opacity: 0.55;
+  }
+
+  header.masthead {
+    padding: 4.5rem 0 2.75rem 128px;
+    padding-right: 40px;
+  }
+
+  .eyebrow {
+    font-family: "SF Mono", "Cascadia Code", "Menlo", Consolas, monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.9rem;
+  }
+
+  h1 {
+    font-family: "Iowan Old Style", Palatino, "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(2rem, 4vw, 2.7rem);
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    margin: 0 0 0.6rem;
+    text-wrap: balance;
+    color: var(--ink);
+  }
+
+  .subhead {
+    font-size: 1.15rem;
+    color: var(--ink-soft);
+    margin: 0;
+    max-width: 46ch;
+    text-wrap: balance;
+  }
+
+  main {
+    padding-left: 128px;
+    padding-right: 40px;
+  }
+
+  section.entry {
+    padding: 2.6rem 0;
+    border-top: 1px solid var(--rule);
+  }
+
+  section.entry:first-of-type {
+    border-top: 1px solid var(--rule);
+  }
+
+  .entry-tag {
+    font-family: "SF Mono", "Cascadia Code", "Menlo", Consolas, monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    margin: 0 0 0.9rem;
+  }
+
+  .entry-tag b {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  h2 {
+    font-family: "Iowan Old Style", Palatino, "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    font-weight: 600;
+    font-size: 1.55rem;
+    line-height: 1.28;
+    margin: 0 0 1rem;
+    text-wrap: balance;
+    max-width: 34ch;
+  }
+
+  h3 {
+    font-family: "Iowan Old Style", Palatino, "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    font-weight: 600;
+    font-size: 1.12rem;
+    margin: 2rem 0 0.75rem;
+    color: var(--ink);
+  }
+
+  p {
+    max-width: 65ch;
+    margin: 0 0 1.1rem;
+    color: var(--ink);
+  }
+
+  p.lede {
+    font-size: 1.05rem;
+    color: var(--ink-soft);
+    max-width: 62ch;
+  }
+
+  strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .callout {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    border-radius: 3px;
+    padding: 1.1rem 1.3rem;
+    margin: 1.4rem 0;
+    box-shadow: var(--shadow);
+    max-width: 62ch;
+  }
+
+  .callout p {
+    margin: 0;
+  }
+
+  .callout p+p {
+    margin-top: 0.6rem;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    margin: 1.4rem 0 1.6rem;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    background: var(--card);
+    box-shadow: var(--shadow);
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 420px;
+    font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+    font-size: 0.92rem;
+  }
+
+  caption {
+    text-align: left;
+    font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    padding: 0.7rem 1rem 0;
+  }
+
+  th,
+  td {
+    text-align: left;
+    padding: 0.62rem 1rem;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+
+  th {
+    font-weight: 600;
+    color: var(--ink-soft);
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    background: var(--accent-soft);
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  tbody tr:nth-child(even) td {
+    background: rgba(120, 140, 120, 0.06);
+  }
+
+  td.num,
+  th.num {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  td.strike {
+    text-decoration: line-through;
+    color: var(--ink-faint);
+  }
+
+  .row-fail td {
+    color: var(--high);
+  }
+
+  .row-ok td {
+    color: var(--low);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 0.22rem 0.55rem;
+    border-radius: 20px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+
+  .chip::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex: none;
+  }
+
+  .chip.low {
+    color: var(--low);
+    background: var(--low-bg);
+    border-color: var(--low-line);
+  }
+
+  .chip.medium {
+    color: var(--medium);
+    background: var(--medium-bg);
+    border-color: var(--medium-line);
+  }
+
+  .chip.high {
+    color: var(--high);
+    background: var(--high-bg);
+    border-color: var(--high-line);
+  }
+
+  .matrix-wrap {
+    overflow-x: auto;
+    margin: 1.4rem 0 1.6rem;
+  }
+
+  table.matrix {
+    border-collapse: separate;
+    border-spacing: 6px;
+    min-width: 480px;
+  }
+
+  table.matrix th,
+  table.matrix td {
+    border: none;
+    padding: 0;
+    background: none;
+  }
+
+  table.matrix th {
+    font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    padding: 0.4rem 0.6rem;
+    text-align: center;
+    background: none;
+  }
+
+  table.matrix th.corner {
+    visibility: hidden;
+  }
+
+  table.matrix th.row-head {
+    text-align: right;
+    padding-right: 0.9rem;
+  }
+
+  table.matrix td.cell {
+    text-align: center;
+    padding: 0.85rem 0.6rem;
+    border-radius: 6px;
+    font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    font-weight: 600;
+    border: 1px solid transparent;
+  }
+
+  td.cell.low {
+    color: var(--low);
+    background: var(--low-bg);
+    border-color: var(--low-line);
+  }
+
+  td.cell.medium {
+    color: var(--medium);
+    background: var(--medium-bg);
+    border-color: var(--medium-line);
+  }
+
+  td.cell.high {
+    color: var(--high);
+    background: var(--high-bg);
+    border-color: var(--high-line);
+  }
+
+  .example {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1.2rem 0 1.6rem;
+  }
+
+  @media (max-width: 640px) {
+    .example {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .example-card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 1.1rem 1.2rem;
+    box-shadow: var(--shadow);
+  }
+
+  .example-card .label {
+    font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 0.5rem;
+  }
+
+  .example-card p {
+    margin: 0 0 0.7rem;
+    font-size: 0.95rem;
+    color: var(--ink-soft);
+  }
+
+  .example-card .result {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--ink);
+  }
+
+  .arrow {
+    color: var(--ink-faint);
+  }
+
+  .switch-demo {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 0.9rem 1.1rem;
+    margin: 1.3rem 0;
+    max-width: 62ch;
+    box-shadow: var(--shadow);
+  }
+
+  .switch-demo .rule-name {
+    font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+    font-size: 0.95rem;
+    color: var(--ink);
+    flex: 1;
+  }
+
+  .switch-demo .rule-meta {
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 0.72rem;
+    color: var(--ink-faint);
+  }
+
+  .toggle {
+    position: relative;
+    display: inline-block;
+    width: 42px;
+    height: 24px;
+    flex: none;
+  }
+
+  .toggle input {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    cursor: pointer;
+  }
+
+  .toggle .track {
+    position: absolute;
+    inset: 0;
+    background: var(--rule-strong);
+    border-radius: 999px;
+    transition: background 0.18s ease;
+  }
+
+  .toggle .thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--card);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    transition: transform 0.18s ease;
+  }
+
+  .toggle input:checked+.track {
+    background: var(--low);
+  }
+
+  .toggle input:checked+.track+.thumb {
+    transform: translateX(18px);
+  }
+
+  .toggle input:focus-visible+.track {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .bottom-line {
+    margin-top: 3rem;
+    padding: 1.8rem 2rem;
+    background: var(--card);
+    border: 1px solid var(--rule-strong);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    max-width: 66ch;
+  }
+
+  .bottom-line .eyebrow {
+    margin-bottom: 0.7rem;
+  }
+
+  .bottom-line p {
+    font-size: 1.05rem;
+    margin: 0;
+    color: var(--ink);
+  }
+
+  footer {
+    padding: 3rem 0 0 128px;
+    padding-right: 40px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    color: var(--ink-faint);
+  }
+
+  @media (max-width: 720px) {
+    .margin-rule {
+      left: 20px;
+    }
+
+    header.masthead,
+    main,
+    footer {
+      padding-left: 44px;
+      padding-right: 20px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      transition: none !important;
+    }
+  }
+
+  a {
+    color: var(--accent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+</style>
+
+<div class="sheet">
+  <div class="margin-rule" aria-hidden="true"></div>
+
+  <header class="masthead">
+    <p class="eyebrow">Internal memo &middot; Risk Scoring</p>
+    <h1>How Our Risk Scoring Works</h1>
+    <p class="subhead">From percentages that had to add up to 100%, to a plain Low / Medium / High rating that doesn't.
+    </p>
+  </header>
+
+  <main>
+
+    <section class="entry">
+      <p class="entry-tag"><b>JE&#8209;001</b> &middot; the old ledger</p>
+      <h2>Score &times; Weight</h2>
+      <p class="lede">Every rule that checks a transaction &mdash; &ldquo;is this amount unusually large?&rdquo;,
+        &ldquo;was this posted at 2am on a Sunday?&rdquo; &mdash; used to carry two numbers.</p>
+      <p><strong>A weight</strong>, a fixed share of importance assigned to that rule, and <strong>a score</strong>, a
+        0&ndash;100% value worked out fresh for each transaction. The overall risk score was every rule&rsquo;s weight
+        multiplied by its score, all added up.</p>
+      <p>The one rule this depended on: <strong>every weight in the table had to add up to exactly 100%.</strong></p>
+
+      <div class="table-wrap">
+        <caption>Original weight table &middot; 8 rules</caption>
+        <table>
+          <thead>
+            <tr>
+              <th>Rule</th>
+              <th class="num">Weight</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Large Value</td>
+              <td class="num">20%</td>
+            </tr>
+            <tr>
+              <td>Threshold Avoidance</td>
+              <td class="num">15%</td>
+            </tr>
+            <tr>
+              <td>Rare Account Pairing</td>
+              <td class="num">15%</td>
+            </tr>
+            <tr>
+              <td>Dormant Account</td>
+              <td class="num">10%</td>
+            </tr>
+            <tr>
+              <td>Round Amount</td>
+              <td class="num">10%</td>
+            </tr>
+            <tr>
+              <td>Velocity Anomaly</td>
+              <td class="num">12%</td>
+            </tr>
+            <tr>
+              <td>Benford&rsquo;s Law</td>
+              <td class="num">8%</td>
+            </tr>
+            <tr>
+              <td><strong>Total</strong></td>
+              <td class="num"><strong>100%</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Turning one rule off broke the other seven</h3>
+      <p>Say Benford&rsquo;s Law wasn&rsquo;t useful for a particular client, so we switched it off. The remaining rules
+        only added up to 92% &mdash; the math no longer worked. Someone had to sit down and hand-recalculate every other
+        rule&rsquo;s weight to bring the total back to 100%.</p>
+
+      <div class="table-wrap">
+        <caption>After removing Benford&rsquo;s Law, by hand</caption>
+        <table>
+          <thead>
+            <tr>
+              <th>Rule</th>
+              <th class="num">Before</th>
+              <th class="num">After rebalancing</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Large Value</td>
+              <td class="num">20%</td>
+              <td class="num">21.7%</td>
+            </tr>
+            <tr>
+              <td>Threshold Avoidance</td>
+              <td class="num">15%</td>
+              <td class="num">16.3%</td>
+            </tr>
+            <tr>
+              <td>Rare Account Pairing</td>
+              <td class="num">15%</td>
+              <td class="num">16.3%</td>
+            </tr>
+            <tr>
+              <td>Dormant Account</td>
+              <td class="num">10%</td>
+              <td class="num">10.9%</td>
+            </tr>
+            <tr>
+              <td>Round Amount</td>
+              <td class="num">10%</td>
+              <td class="num">10.9%</td>
+            </tr>
+            <tr>
+              <td>Velocity Anomaly</td>
+              <td class="num">12%</td>
+              <td class="num">13.0%</td>
+            </tr>
+            <tr>
+              <td class="strike">Benford&rsquo;s Law</td>
+              <td class="num strike">8%</td>
+              <td class="num">&mdash; off</td>
+            </tr>
+            <tr class="row-fail">
+              <td><strong>Total before fixing</strong></td>
+              <td class="num" colspan="2"><strong>92%</strong> &mdash; broken</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <p>The same manual rebalancing happened every time a rule was added, removed, or toggled. It was tedious, easy
+          to get wrong, and a total that quietly drifted to 92% or 108% could sit unnoticed for a long time.</p>
+        <p>On top of that, a score like &ldquo;68%&rdquo; implied a precision these rules can&rsquo;t really deliver
+          &mdash; they&rsquo;re pattern checks, not a scientific formula.</p>
+      </div>
+    </section>
+
+    <section class="entry">
+      <p class="entry-tag"><b>JE&#8209;002</b> &middot; the current ledger</p>
+      <h2>Hit + Severity</h2>
+      <p class="lede">We replaced the percentage table with two plain questions, asked separately by every rule.</p>
+      <p><strong>Did it fire?</strong> A yes or no &mdash; did this rule find something on this transaction. <strong>If
+          it fired, how bad is it?</strong> Rated <span class="chip low">Low</span> <span
+          class="chip medium">Medium</span> or <span class="chip high">High</span>, never a number.</p>
+      <p>Instead of &ldquo;this transaction scored 68%,&rdquo; we now say: <em>this transaction has 1 High-severity
+          issue and 2 Medium-severity issues.</em> Nothing to calculate, nothing to explain away.</p>
+
+      <h3>Where the rating comes from</h3>
+      <p>Two independent settings combine to produce it. A <strong>ceiling</strong> &mdash; fixed per rule, answering
+        &ldquo;no matter what, how serious can this type of issue ever be?&rdquo; And <strong>how strongly it
+          fired</strong> on this specific transaction &mdash; mild, moderate, or extreme, from the real numbers
+        involved.</p>
+
+      <div class="matrix-wrap">
+        <table class="matrix">
+          <thead>
+            <tr>
+              <th class="corner">ceiling \ strength</th>
+              <th>Mild</th>
+              <th>Moderate</th>
+              <th>Extreme</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th class="row-head">High ceiling</th>
+              <td class="cell medium">Medium</td>
+              <td class="cell high">High</td>
+              <td class="cell high">High</td>
+            </tr>
+            <tr>
+              <th class="row-head">Medium ceiling</th>
+              <td class="cell low">Low</td>
+              <td class="cell medium">Medium</td>
+              <td class="cell high">High</td>
+            </tr>
+            <tr>
+              <th class="row-head">Low ceiling</th>
+              <td class="cell low">Low</td>
+              <td class="cell low">Low</td>
+              <td class="cell medium">Medium</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Large Value &mdash; ceiling: High</h3>
+      <p>Compares a transaction&rsquo;s amount against that account&rsquo;s own history. This rule is always taken
+        seriously, so even its mildest case never drops below Medium.</p>
+      <div class="example">
+        <div class="example-card">
+          <p class="label">Transaction A</p>
+          <p>Amount is a bit above the account&rsquo;s normal range.</p>
+          <p class="result">Fires mildly <span class="arrow">&rarr;</span> <span class="chip medium">Medium</span></p>
+        </div>
+        <div class="example-card">
+          <p class="label">Transaction B</p>
+          <p>Amount is far beyond anything normal for this account.</p>
+          <p class="result">Fires extremely <span class="arrow">&rarr;</span> <span class="chip high">High</span></p>
+        </div>
+      </div>
+
+      <h3>Round Amount &mdash; ceiling: Medium</h3>
+      <p>A single round number rarely means much on its own. Several round patterns landing on the same transaction is a
+        different story.</p>
+      <div class="example">
+        <div class="example-card">
+          <p class="label">$500.00</p>
+          <p>Clean, no cents &mdash; one weak pattern.</p>
+          <p class="result">Fires mildly <span class="arrow">&rarr;</span> <span class="chip low">Low</span></p>
+        </div>
+        <div class="example-card">
+          <p class="label">$5,555.00</p>
+          <p>No cents, round thousands, repeated digits &mdash; three patterns stacked.</p>
+          <p class="result">Fires strongly <span class="arrow">&rarr;</span> <span class="chip medium">Medium</span></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="entry">
+      <p class="entry-tag"><b>JE&#8209;003</b> &middot; why it&rsquo;s easier to run</p>
+      <h2>Nothing left to rebalance</h2>
+      <p class="lede">The old system needed a shared pool of weights that always summed to 100%. The new one
+        doesn&rsquo;t &mdash; every rule stands on its own.</p>
+
+      <div class="switch-demo">
+        <span class="rule-name">Benford&rsquo;s Law</span>
+        <span class="rule-meta">ceiling: low</span>
+        <label class="toggle">
+          <input type="checkbox" aria-label="Enable Benford's Law rule" />
+          <span class="track"></span>
+          <span class="thumb"></span>
+        </label>
+      </div>
+      <p style="margin-top: -0.6rem; font-size: 0.88rem; color: var(--ink-faint);">Flipping this switch is the entire
+        change. No other rule is touched.</p>
+
+      <div class="table-wrap">
+        <caption>Old vs. new, side by side</caption>
+        <table>
+          <thead>
+            <tr>
+              <th>Task</th>
+              <th>Score &times; Weight</th>
+              <th>Hit + Severity</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Turn a rule off</td>
+              <td>Recalculate every other rule&rsquo;s weight</td>
+              <td>Flip one switch</td>
+            </tr>
+            <tr>
+              <td>Add a new rule</td>
+              <td>Recalculate every existing rule&rsquo;s weight</td>
+              <td>Give it a category and a ceiling</td>
+            </tr>
+            <tr>
+              <td>Make a rule stricter</td>
+              <td>Adjust its weight and everyone else&rsquo;s</td>
+              <td>Change its ceiling alone</td>
+            </tr>
+            <tr>
+              <td>Risk of silent errors</td>
+              <td>High &mdash; totals could drift off 100%</td>
+              <td>None &mdash; there&rsquo;s no shared total</td>
+            </tr>
+            <tr>
+              <td>What the auditor sees</td>
+              <td>A percentage implying false precision</td>
+              <td>&ldquo;2 High, 1 Medium&rdquo;</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="bottom-line">
+      <p class="eyebrow">Bottom line</p>
+      <p>We removed the shared pool every rule&rsquo;s weight had to fit into. Enabling, disabling, adding, or re-rating
+        a rule now changes exactly one thing &mdash; because there&rsquo;s nothing else left that needs to add up.</p>
+    </div>
+
+  </main>
+
+  <footer>Risk Scoring &middot; Score &times; Weight &rarr; Hit + Severity</footer>
+</div>
